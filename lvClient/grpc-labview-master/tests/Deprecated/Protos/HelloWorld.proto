@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+// import "data_marshal.proto";
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+package queryserverplus;
+
+//---------------------------------------------------------------------
+// The test service definition.
+//---------------------------------------------------------------------
+service HelloWorld {
+  rpc clientServerGreet (myRequest) returns (myResponse) {}
+  rpc clientContinousGreet (stream myRequest) returns (myResponse) {}
+  rpc serverContinousGreet (myRequest) returns (stream myResponse) {}
+  rpc bothContinousGreet (stream myRequest) returns (stream myResponse) {}
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+message myRequest {
+  string messagein = 1;
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+message myResponse {
+  string messageout = 1;
+}

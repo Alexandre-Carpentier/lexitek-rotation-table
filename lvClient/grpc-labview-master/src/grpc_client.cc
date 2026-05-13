@@ -1,0 +1,961 @@
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+#include <grpc_client.h>
+#include <lv_interop.h>
+#include <lv_message.h>
+#include <lv_message_efficient.h>
+#include <cluster_copier.h>
+#include <grpcpp/create_channel.h>
+#include <grpcpp/impl/codegen/client_context.h>
+#include <grpcpp/impl/codegen/client_unary_call.h>
+#include <grpcpp/support/channel_arguments.h>
+#include <ctime>
+#include <chrono>
+#include <feature_toggles.h>
+#include <asio/ip/address.hpp>
+#include <regex>
+
+namespace grpc_labview
+{
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    LabVIEWgRPCClient::LabVIEWgRPCClient()
+    {
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    static bool IsLoopbackAddress(const char* address)
+    {
+        std::string hostname(address);
+
+        std::regex hostFromUriRegex(R"(^\w+://([^/?#:]+))");
+        std::smatch match;
+
+        if (std::regex_search(hostname, match, hostFromUriRegex) && match.size() > 1)
+        {
+            hostname = match.str(1); // The host part is in the first capture group
+        }
+        else
+        {
+            size_t lastColonPosition = hostname.rfind(':');
+            if (lastColonPosition != std::string::npos)
+            {
+                hostname = hostname.substr(0, lastColonPosition);
+            }
+        }
+
+        bool isLoopback = hostname == "localhost" || hostname == "LOCALHOST";
+        if (!isLoopback)
+        {
+            try
+            {
+                asio::ip::address ip_address = asio::ip::make_address(hostname);
+                isLoopback = ip_address.is_loopback();
+            }
+            catch (std::exception&)
+            {
+                isLoopback = false;
+            }
+        }
+        return isLoopback;
+    }
+
+    void LabVIEWgRPCClient::Connect(const char *address, const std::string &certificatePath)
+    {
+        std::shared_ptr<grpc::ChannelCredentials> creds;
+        if (!certificatePath.empty())
+        {
+            std::string cacert = read_keycert(certificatePath);
+            grpc::SslCredentialsOptions ssl_opts;
+            ssl_opts.pem_root_certs = cacert;
+            creds = grpc::SslCredentials(ssl_opts);
+        }
+        else
+        {
+            creds = grpc::InsecureChannelCredentials();
+        }
+
+        grpc::ChannelArguments args;
+        args.SetMaxReceiveMessageSize(-1);
+        args.SetMaxSendMessageSize(-1);
+        if (IsLoopbackAddress(address))
+        {
+            args.SetInt(GRPC_ARG_ENABLE_HTTP_PROXY, 0);
+        }
+        Channel = grpc::CreateCustomChannel(address, creds, args);
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    ClientCall::~ClientCall()
+    {
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void ClientCall::Finish()
+    {
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void ClientCall::Cancel()
+    {
+        _context.get()->Cancel();
+        _cancelled = true;
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    ServerStreamingClientCall::~ServerStreamingClientCall()
+    {
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void ServerStreamingClientCall::Finish()
+    {
+        _status = _reader->Finish();
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    bool ServerStreamingClientCall::Read(LVMessage *message)
+    {
+        bool result = _reader->Read(message);
+        return result;
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    ClientStreamingClientCall::~ClientStreamingClientCall()
+    {
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void ClientStreamingClientCall::Finish()
+    {
+        WritesComplete();
+        _status = _writer->Finish();
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void ClientStreamingClientCall::WritesComplete()
+    {
+        if (!_writesComplete)
+        {
+            _writesComplete = true;
+            _writer->WritesDone();
+        }
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    bool ClientStreamingClientCall::Write(LVMessage *message)
+    {
+        return _writer->Write(*message);
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    BidiStreamingClientCall::~BidiStreamingClientCall()
+    {
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void BidiStreamingClientCall::Finish()
+    {
+        WritesComplete();
+        _status = _readerWriter->Finish();
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    void BidiStreamingClientCall::WritesComplete()
+    {
+        if (!_writesComplete)
+        {
+            _writesComplete = true;
+            _readerWriter->WritesDone();
+        }
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    bool BidiStreamingClientCall::Read(LVMessage *message)
+    {
+        return _readerWriter->Read(message);
+    }
+
+    //---------------------------------------------------------------------
+    //---------------------------------------------------------------------
+    bool BidiStreamingClientCall::Write(LVMessage *message)
+    {
+        return _readerWriter->Write(*message);
+    }
+
+    void ClientContext::set_deadline(int32_t timeoutMs)
+    {
+        auto deadline = std::chrono::system_clock::now() + std::chrono::milliseconds(timeoutMs);
+        gRPCClientContext.set_deadline(deadline);
+    }
+
+    void ClientContext::Cancel()
+    {
+        gRPCClientContext.TryCancel();
+    }
+}
+
+int32_t ClientCleanUpProc(grpc_labview::gRPCid *clientId);
+void CheckActiveAndSignalOccurenceForClientCall(grpc_labview::ClientCall *clientCall);
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t CreateClient2(const char* address, const char* certificatePath, grpc_labview::LVBoolean autoCleanup, grpc_labview::gRPCid** clientId)
+{
+    try {
+        grpc_labview::InitCallbacks();
+
+        auto client = new grpc_labview::LabVIEWgRPCClient();
+        client->Connect(address, certificatePath);
+        *clientId = grpc_labview::gPointerManager.RegisterPointer(client);
+        auto cleanupMode = autoCleanup ? grpc_labview::CleanupProcMode::CleanOnIdle : grpc_labview::CleanupProcMode::CleanAfterReset;
+        grpc_labview::RegisterCleanupProc(ClientCleanUpProc, client, cleanupMode);
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t CreateClient(const char* address, const char* certificatePath, grpc_labview::gRPCid** clientId)
+{
+    return CreateClient2(address, certificatePath, grpc_labview::LVTrue, clientId);
+}
+
+// Signal a lv occurrence for an active client call from async c++ thread
+void CheckActiveAndSignalOccurenceForClientCall(grpc_labview::ClientCall* clientCall)
+{
+    if (clientCall == nullptr)
+    {
+        return;
+    }
+    if (clientCall->_cancelled == true)
+    {
+        grpc_labview::SignalOccurrence(clientCall->_occurrence);
+    }
+    std::unique_lock<std::mutex> lock(clientCall->_client->clientLock);
+    if (clientCall->_client->ActiveClientCalls.find(clientCall) != clientCall->_client->ActiveClientCalls.end())
+    {
+        grpc_labview::SignalOccurrence(clientCall->_occurrence);
+    }
+}
+
+LIBRARY_EXPORT int32_t CloseClient(grpc_labview::gRPCid* clientId)
+{
+    try {
+        auto client = clientId->CastTo<grpc_labview::LabVIEWgRPCClient>();
+        if (!client)
+        {
+            return -1;
+        }
+
+        std::unique_lock<std::mutex> lock(client->clientLock);
+        for (auto activeClientCall = client->ActiveClientCalls.begin(); activeClientCall != client->ActiveClientCalls.end(); activeClientCall++)
+        {
+            activeClientCall->first->Cancel();
+        }
+        client->ActiveClientCalls.clear();
+        lock.unlock();
+
+        grpc_labview::DeregisterCleanupProc(ClientCleanUpProc, clientId);
+        grpc_labview::gPointerManager.UnregisterPointer(clientId);
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+int32_t ClientCleanUpProc(grpc_labview::gRPCid* clientId)
+{
+    return CloseClient(clientId);
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t CreateClientContext(grpc_labview::gRPCid** contextId)
+{
+    try {
+        auto clientContext = std::make_shared<grpc_labview::ClientContext>();
+        *contextId = grpc_labview::gPointerManager.RegisterPointer(clientContext);
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t CloseClientContext(grpc_labview::gRPCid* contextId)
+{
+    try {
+        auto context = contextId->CastTo<grpc_labview::ClientContext>();
+        if (!context)
+        {
+            return -1;
+        }
+        grpc_labview::gPointerManager.UnregisterPointer(contextId);
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientUnaryCall2(
+    grpc_labview::gRPCid* clientId,
+    grpc_labview::MagicCookie* occurrence,
+    const char* methodName,
+    const char* requestMessageName,
+    const char* responseMessageName,
+    int8_t* requestCluster,
+    grpc_labview::gRPCid** callId,
+    int32_t timeoutMs,
+    grpc_labview::gRPCid* contextId,
+    int8_t* responseCluster)
+{
+    try {
+        auto client = clientId->CastTo<grpc_labview::LabVIEWgRPCClient>();
+        if (!client)
+        {
+            return -1;
+        }
+        auto requestMetadata = client->FindMetadata(requestMessageName);
+        if (requestMetadata == nullptr)
+        {
+            return -2;
+        }
+        auto responseMetadata = client->FindMetadata(responseMessageName);
+        if (responseMetadata == nullptr)
+        {
+            return -3;
+        }
+
+        auto clientContext = contextId->CastTo<grpc_labview::ClientContext>();
+        if (!clientContext)
+        {
+            clientContext = std::make_shared<grpc_labview::ClientContext>();
+        }
+        if (timeoutMs > 0)
+        {
+            clientContext->set_deadline(timeoutMs);
+        }
+
+        auto featureConfig = grpc_labview::FeatureConfig::getInstance();
+
+        auto clientCall = new grpc_labview::ClientCall();
+        std::unique_lock<std::mutex> lock(client->clientLock);
+        client->ActiveClientCalls[clientCall] = true;
+        lock.unlock();
+        *callId = grpc_labview::gPointerManager.RegisterPointer(clientCall);
+        clientCall->_client = client;
+        clientCall->_methodName = methodName;
+
+        if (featureConfig.IsUseOccurrenceEnabled())
+        {
+            clientCall->_occurrence = *occurrence;
+        }
+        else {
+            clientCall->_occurrence = 0;
+        }
+        clientCall->_context = clientContext;
+
+        if (featureConfig.IsEfficientMessageCopyEnabled() && responseCluster != nullptr)
+        {
+            clientCall->_useLVEfficientMessage = true;
+        }
+
+        if (clientCall->_useLVEfficientMessage)
+        {
+            clientCall->_request = std::make_shared<grpc_labview::LVMessageEfficient>(requestMetadata, requestCluster);
+            clientCall->_response = std::make_shared<grpc_labview::LVMessageEfficient>(responseMetadata, responseCluster);
+        }
+        else
+        {
+            clientCall->_request = std::make_shared<grpc_labview::LVMessage>(requestMetadata);
+            clientCall->_response = std::make_shared<grpc_labview::LVMessage>(responseMetadata);
+        }
+
+        grpc_labview::ClusterDataCopier::CopyFromCluster(*clientCall->_request.get(), requestCluster);
+
+        clientCall->_runFuture = std::async(
+            std::launch::async,
+            [clientCall]()
+            {
+                grpc::internal::RpcMethod method(clientCall->_methodName.c_str(), grpc::internal::RpcMethod::NORMAL_RPC);
+                clientCall->_status = grpc::internal::BlockingUnaryCall(clientCall->_client->Channel.get(), method, &(clientCall->_context.get()->gRPCClientContext), *clientCall->_request.get(), clientCall->_response.get());
+                if (clientCall->_occurrence != 0)
+                {
+                    CheckActiveAndSignalOccurenceForClientCall(clientCall);
+                }
+                return 0;
+            });
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientUnaryCall(
+    grpc_labview::gRPCid* clientId,
+    grpc_labview::MagicCookie* occurrence,
+    const char* methodName,
+    const char* requestMessageName,
+    const char* responseMessageName,
+    int8_t* requestCluster,
+    grpc_labview::gRPCid** callId,
+    int32_t timeoutMs,
+    grpc_labview::gRPCid* contextId)
+{
+    return ClientUnaryCall2(clientId, occurrence, methodName, requestMessageName, responseMessageName, requestCluster, callId, timeoutMs, contextId, nullptr);
+}
+
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t CompleteClientUnaryCall2(
+    grpc_labview::gRPCid* callId,
+    int8_t* responseCluster,
+    grpc_labview::LStrHandle* errorMessage,
+    grpc_labview::AnyCluster* errorDetailsCluster)
+{
+    try {
+        auto clientCall = callId->CastTo<grpc_labview::ClientCall>();
+        if (!clientCall)
+        {
+            return -1;
+        }
+
+
+        grpc_labview::gPointerManager.UnregisterPointer(callId);
+
+        int32_t result = 0;
+        if (clientCall->_status.ok())
+        {
+            clientCall->_runFuture.wait();
+            if (!clientCall->_useLVEfficientMessage)
+            {
+                grpc_labview::ClusterDataCopier::CopyToCluster(*clientCall->_response.get(), responseCluster);
+            }
+        }
+        else
+        {
+            result = -(1000 + clientCall->_status.error_code());
+            if (errorMessage != nullptr)
+            {
+                grpc_labview::SetLVString(errorMessage, clientCall->_status.error_message());
+            }
+            if (errorDetailsCluster != nullptr)
+            {
+            }
+        }
+        std::unique_lock<std::mutex> lock(clientCall->_client->clientLock);
+        auto call = clientCall->_client->ActiveClientCalls.find(clientCall.get());
+        if (call != clientCall->_client->ActiveClientCalls.end())
+        {
+            clientCall->_client->ActiveClientCalls.erase(call);
+        }
+        lock.unlock();
+        return result;
+    } catch (const std::exception& e) {
+        grpc_labview::SetErrorMessage(errorMessage, e.what());
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t CompleteClientUnaryCall(grpc_labview::gRPCid* callId, int8_t* responseCluster)
+{
+    return CompleteClientUnaryCall2(callId, responseCluster, nullptr, nullptr);
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientBeginClientStreamingCall(
+    grpc_labview::gRPCid* clientId,
+    const char* methodName,
+    const char* requestMessageName,
+    const char* responseMessageName,
+    grpc_labview::gRPCid** callId,
+    int32_t timeoutMs,
+    grpc_labview::gRPCid* contextId)
+{
+    try {
+        auto client = clientId->CastTo<grpc_labview::LabVIEWgRPCClient>();
+        if (!client)
+        {
+            return -1;
+        }
+        auto requestMetadata = client->FindMetadata(requestMessageName);
+        if (requestMetadata == nullptr)
+        {
+            return -2;
+        }
+        auto responseMetadata = client->FindMetadata(responseMessageName);
+        if (responseMetadata == nullptr)
+        {
+            return -3;
+        }
+
+        auto clientContext = contextId->CastTo<grpc_labview::ClientContext>();
+        if (!clientContext)
+        {
+            clientContext = std::make_shared<grpc_labview::ClientContext>();
+        }
+        if (timeoutMs > 0)
+        {
+            clientContext->set_deadline(timeoutMs);
+        }
+
+        auto clientCall = new grpc_labview::ClientStreamingClientCall();
+        std::unique_lock<std::mutex> lock(client->clientLock);
+        client->ActiveClientCalls[clientCall] = true;
+        lock.unlock();
+        *callId = grpc_labview::gPointerManager.RegisterPointer(clientCall);
+        clientCall->_client = client;
+        clientCall->_request = std::make_shared<grpc_labview::LVMessage>(requestMetadata);
+        clientCall->_response = std::make_shared<grpc_labview::LVMessage>(responseMetadata);
+        clientCall->_context = clientContext;
+
+        grpc::internal::RpcMethod method(methodName, grpc::internal::RpcMethod::CLIENT_STREAMING);
+        auto writer = grpc::internal::ClientWriterFactory<grpc_labview::LVMessage>::Create(client->Channel.get(), method, &(clientCall->_context.get()->gRPCClientContext), clientCall->_response.get());
+        clientCall->_writer = std::shared_ptr<grpc::ClientWriterInterface<grpc_labview::LVMessage>>(writer);
+
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientBeginServerStreamingCall(
+    grpc_labview::gRPCid* clientId,
+    const char* methodName,
+    const char* requestMessageName,
+    const char* responseMessageName,
+    int8_t* requestCluster,
+    grpc_labview::gRPCid** callId,
+    int32_t timeoutMs,
+    grpc_labview::gRPCid* contextId)
+{
+    try {
+        auto client = clientId->CastTo<grpc_labview::LabVIEWgRPCClient>();
+        if (!client)
+        {
+            return -1;
+        }
+        auto requestMetadata = client->FindMetadata(requestMessageName);
+        if (requestMetadata == nullptr)
+        {
+            return -2;
+        }
+        auto responseMetadata = client->FindMetadata(responseMessageName);
+        if (responseMetadata == nullptr)
+        {
+            return -3;
+        }
+
+        auto clientContext = contextId->CastTo<grpc_labview::ClientContext>();
+        if (!clientContext)
+        {
+            clientContext = std::make_shared<grpc_labview::ClientContext>();
+        }
+        if (timeoutMs > 0)
+        {
+            clientContext->set_deadline(timeoutMs);
+        }
+
+        auto clientCall = new grpc_labview::ServerStreamingClientCall();
+        std::unique_lock<std::mutex> lock(client->clientLock);
+        client->ActiveClientCalls[clientCall] = true;
+        lock.unlock();
+        *callId = grpc_labview::gPointerManager.RegisterPointer(clientCall);
+        clientCall->_client = client;
+        clientCall->_request = std::make_shared<grpc_labview::LVMessage>(requestMetadata);
+        clientCall->_response = std::make_shared<grpc_labview::LVMessage>(responseMetadata);
+        clientCall->_context = clientContext;
+
+        grpc_labview::ClusterDataCopier::CopyFromCluster(*clientCall->_request.get(), requestCluster);
+
+        grpc::internal::RpcMethod method(methodName, grpc::internal::RpcMethod::SERVER_STREAMING);
+        auto reader = grpc::internal::ClientReaderFactory<grpc_labview::LVMessage>::Create<grpc_labview::LVMessage>(client->Channel.get(), method, &(clientCall->_context.get()->gRPCClientContext), *clientCall->_request.get());
+        clientCall->_reader = std::shared_ptr<grpc::ClientReader<grpc_labview::LVMessage>>(reader);
+
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientBeginBidiStreamingCall(
+    grpc_labview::gRPCid* clientId,
+    const char* methodName,
+    const char* requestMessageName,
+    const char* responseMessageName,
+    grpc_labview::gRPCid** callId,
+    int32_t timeoutMs,
+    grpc_labview::gRPCid* contextId)
+{
+    try {
+        auto client = clientId->CastTo<grpc_labview::LabVIEWgRPCClient>();
+        if (!client)
+        {
+            return -1;
+        }
+        auto requestMetadata = client->FindMetadata(requestMessageName);
+        if (requestMetadata == nullptr)
+        {
+            return -2;
+        }
+        auto responseMetadata = client->FindMetadata(responseMessageName);
+        if (responseMetadata == nullptr)
+        {
+            return -3;
+        }
+
+        auto clientContext = contextId->CastTo<grpc_labview::ClientContext>();
+        if (!clientContext)
+        {
+            clientContext = std::make_shared<grpc_labview::ClientContext>();
+        }
+        if (timeoutMs > 0)
+        {
+            clientContext->set_deadline(timeoutMs);
+        }
+
+        auto clientCall = new grpc_labview::BidiStreamingClientCall();
+        std::unique_lock<std::mutex> lock(client->clientLock);
+        client->ActiveClientCalls[clientCall] = true;
+        lock.unlock();
+        *callId = grpc_labview::gPointerManager.RegisterPointer(clientCall);
+        clientCall->_client = client;
+        clientCall->_request = std::make_shared<grpc_labview::LVMessage>(requestMetadata);
+        clientCall->_response = std::make_shared<grpc_labview::LVMessage>(responseMetadata);
+        clientCall->_context = clientContext;
+
+        grpc::internal::RpcMethod method(methodName, grpc::internal::RpcMethod::BIDI_STREAMING);
+        auto readerWriter = grpc::internal::ClientReaderWriterFactory<grpc_labview::LVMessage, grpc_labview::LVMessage>::Create(client->Channel.get(), method, &(clientCall->_context.get()->gRPCClientContext));
+        clientCall->_readerWriter = std::shared_ptr<grpc::ClientReaderWriterInterface<grpc_labview::LVMessage, grpc_labview::LVMessage>>(readerWriter);
+
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientBeginReadFromStream(grpc_labview::gRPCid* callId, grpc_labview::MagicCookie* occurrencePtr)
+{
+    try {
+        auto reader = callId->CastTo<grpc_labview::StreamReader>();
+        auto call = callId->CastTo<grpc_labview::ClientCall>();
+
+        auto featureConfig = grpc_labview::FeatureConfig::getInstance();
+
+        grpc_labview::MagicCookie occurrence = 0;
+        if (featureConfig.IsUseOccurrenceEnabled())
+        {
+            occurrence = *occurrencePtr;
+        }
+
+        if (!reader || !call)
+        {
+            if (occurrence != 0) {
+                grpc_labview::SignalOccurrence(occurrence);
+            }
+            return -1;
+        }
+
+        call->_occurrence = occurrence;
+        reader->_readFuture = std::async(
+            std::launch::async,
+            [call, reader]()
+            {
+                call->_response->Clear();
+                auto result = reader->Read(call->_response.get());
+                if (call->_occurrence != 0) {
+                    CheckActiveAndSignalOccurenceForClientCall(call.get());
+                }
+                return result;
+            });
+
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientCompleteReadFromStream(grpc_labview::gRPCid* callId, int* success, int8_t* responseCluster)
+{
+    try {
+        auto reader = callId->CastTo<grpc_labview::StreamReader>();
+        auto call = callId->CastTo<grpc_labview::ClientCall>();
+        if (!reader || !call)
+        {
+            return -1;
+        }
+        reader->_readFuture.wait();
+        *success = reader->_readFuture.get();
+        if (*success)
+        {
+            grpc_labview::ClusterDataCopier::CopyToCluster(*call->_response.get(), responseCluster);
+        }
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientWriteToStream(grpc_labview::gRPCid* callId, int8_t* requestCluster, int* success)
+{
+    try {
+        auto writer = callId->CastTo<grpc_labview::StreamWriter>();
+        if (!writer)
+        {
+            return -1;
+        }
+        auto clientCall = callId->CastTo<grpc_labview::ClientCall>();
+        if (!clientCall)
+        {
+            return -2;
+        }
+
+        grpc_labview::ClusterDataCopier::CopyFromCluster(*clientCall->_request.get(), requestCluster);
+
+        *success = writer->Write(clientCall->_request.get());
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientWritesComplete(grpc_labview::gRPCid* callId)
+{
+    try {
+        auto writer = callId->CastTo<grpc_labview::StreamWriter>();
+        if (!writer)
+        {
+            return -1;
+        }
+        writer->WritesComplete();
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t FinishClientCompleteClientStreamingCall(
+    grpc_labview::gRPCid* callId,
+    int8_t* responseCluster,
+    grpc_labview::LStrHandle* errorMessage,
+    grpc_labview::AnyCluster* errorDetailsCluster)
+{
+    try {
+        auto call = callId->CastTo<grpc_labview::ClientCall>();
+        if (!call)
+        {
+            return -1;
+        }
+        int32_t result = 0;
+        if (call->_status.ok())
+        {
+            call->_runFuture.wait();
+            grpc_labview::ClusterDataCopier::CopyToCluster(*call->_response.get(), responseCluster);
+        }
+        else
+        {
+            result = -(1000 + call->_status.error_code());
+            if (errorMessage != nullptr)
+            {
+                grpc_labview::SetLVString(errorMessage, call->_status.error_message());
+            }
+            if (errorDetailsCluster != nullptr)
+            {
+            }
+        }
+        std::unique_lock<std::mutex> lock(call->_client->clientLock);
+        auto client_call = call->_client->ActiveClientCalls.find(call.get());
+        if (client_call != call->_client->ActiveClientCalls.end())
+        {
+            call->_client->ActiveClientCalls.erase(client_call);
+        }
+        lock.unlock();
+        grpc_labview::gPointerManager.UnregisterPointer(callId);
+        return result;
+    } catch (const std::exception& e) {
+        grpc_labview::SetErrorMessage(errorMessage, e.what());
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientCompleteClientStreamingCall(grpc_labview::gRPCid* callId, grpc_labview::MagicCookie* occurrencePtr)
+{
+    try {
+        auto call = callId->CastTo<grpc_labview::ClientCall>();
+        if (!call)
+        {
+            return -1;
+        }
+        auto featureConfig = grpc_labview::FeatureConfig::getInstance();
+
+        if (featureConfig.IsUseOccurrenceEnabled()) {
+            call->_occurrence = *occurrencePtr;
+        }
+        else {
+            call->_occurrence = 0;
+        }
+        call->_runFuture = std::async(
+            std::launch::async,
+            [call]()
+            {
+                call->Finish();
+                if (call->_occurrence != 0) {
+                    CheckActiveAndSignalOccurenceForClientCall(call.get());
+                }
+                return 0;
+            });
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientCompleteStreamingCall(
+    grpc_labview::gRPCid* callId,
+    grpc_labview::LStrHandle* errorMessage,
+    grpc_labview::AnyCluster* errorDetailsCluster)
+{
+    try {
+        auto call = callId->CastTo<grpc_labview::ClientCall>();
+        if (!call)
+        {
+            return -1;
+        }
+
+        // We've already got a shared_ptr for this token, so calling DestroyToken now
+        // will just prevent any other API calls from grabbing the pointer.
+        grpc_labview::gPointerManager.UnregisterPointer(callId);
+
+        call->Finish();
+        int32_t result = 0;
+        if (!call->_status.ok())
+        {
+            result = -(1000 + call->_status.error_code());
+            if (errorMessage != nullptr)
+            {
+                grpc_labview::SetLVString(errorMessage, call->_status.error_message());
+            }
+            if (errorDetailsCluster != nullptr)
+            {
+            }
+        }
+        std::unique_lock<std::mutex> lock(call->_client->clientLock);
+        auto client_call = call->_client->ActiveClientCalls.find(call.get());
+        if (client_call != call->_client->ActiveClientCalls.end())
+        {
+            call->_client->ActiveClientCalls.erase(client_call);
+        }
+        lock.unlock();
+        return result;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientCancelCallContext(
+    grpc_labview::gRPCid* contextId)
+{
+    try {
+        auto context = contextId->CastTo<grpc_labview::ClientContext>();
+        if (!context)
+        {
+            return -1;
+        }
+
+        context->Cancel();
+        return 0;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
+
+//---------------------------------------------------------------------
+//---------------------------------------------------------------------
+LIBRARY_EXPORT int32_t ClientCancelCall(
+    grpc_labview::gRPCid* callId,
+    grpc_labview::LStrHandle* errorMessage,
+    grpc_labview::AnyCluster* errorDetailsCluster)
+{
+    try {
+        auto call = callId->CastTo<grpc_labview::ClientCall>();
+        if (!call)
+        {
+            return -1;
+        }
+
+        // We've already got a shared_ptr for this token, so calling DestroyToken now
+        // will just prevent any other API calls from grabbing the pointer.
+        grpc_labview::gPointerManager.UnregisterPointer(callId);
+        call->Cancel();
+
+        int32_t result = 0;
+        if (!call->_status.ok())
+        {
+            result = -(1000 + call->_status.error_code());
+            if (errorMessage != nullptr)
+            {
+                grpc_labview::SetLVString(errorMessage, call->_status.error_message());
+            }
+            if (errorDetailsCluster != nullptr)
+            {
+            }
+        }
+        std::unique_lock<std::mutex> lock(call->_client->clientLock);
+        auto client_call = call->_client->ActiveClientCalls.find(call.get());
+        if (client_call != call->_client->ActiveClientCalls.end())
+        {
+            call->_client->ActiveClientCalls.erase(client_call);
+        }
+        lock.unlock();
+        return result;
+    } catch (const std::exception&) {
+        return grpc_labview::TranslateException();
+    }
+}
