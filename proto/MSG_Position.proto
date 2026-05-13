@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+message frontend_message
+{
+    string source = 1;
+    string command = 2;
+    uint64 timestamp_ms = 3;
+}
+
+message backend_response
+{
+    bool ok = 1;
+    double rotation_angle = 2;
+    uint64 timestamp_ms = 3;
+}
+
+service ReadAngleRPC
+{
+    rpc SendCommand(frontend_message) returns (backend_response){}
+}
