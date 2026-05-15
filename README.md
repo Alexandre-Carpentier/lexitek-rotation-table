@@ -41,7 +41,7 @@ des sorties à collecteurs ouverts qui pilotent les signaux d'entrée du R208.
 ---
 
 ## Schéma de câblage — NI USB-6001 ↔ Carte d'interface ↔ Lexitek R208
-
+```mermaid
 graph LR
     subgraph NI["NI USB-6001"]
         AI0["AI0 — Entrée analogique"]
@@ -85,7 +85,7 @@ graph LR
     D_ROT    -->|"DIR"| DIRECTION
     CLK_ROT  -->|"STEP"| STEP
     HOME_ROT -->|"HOME OUT"| HOME
-
+```
 ---
 
 ## Correspondance broches — `hardwareControl.h`
