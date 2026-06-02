@@ -16,13 +16,13 @@ set(CMAKE_CXX_STANDARD 23)
 
 #########################################################################
 # 
-project(qt-rotation-table)
+project(lexitek-rotation-table)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-
-add_subdirectory(rotation-frontend)
-add_subdirectory(rotation-backend)
-add_subdirectory(rotation-test)
+add_subdirectory(cppServer)
+add_subdirectory(qtClient)
+add_subdirectory(lvClient)
+add_subdirectory(unitTests)
