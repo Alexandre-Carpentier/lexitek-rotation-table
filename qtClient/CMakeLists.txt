@@ -4,7 +4,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 #########################################################################
 # Front end project
-project(rotation-frontend)
+project(qtClient)
 
 #########################################################################
 # Packages QT and gRPC
@@ -48,7 +48,7 @@ set(CMAKE_AUTORCC ON)
 
 #########################################################################
 # EXECUTABLE
-add_executable(rotation-frontend WIN32 src/main.cpp
+add_executable(qtClient WIN32 src/main.cpp
 	src/mainwindow.h 
 	src/mainwindow.cpp
 	src/frontend_rpc.h 
@@ -57,6 +57,6 @@ add_executable(rotation-frontend WIN32 src/main.cpp
 	src/shell.h 
 	)
 
-target_link_libraries(rotation-frontend PRIVATE Qt6::Widgets Qt6::Core)
-target_link_libraries(rotation-frontend PRIVATE protobuf_lib_frontend)
-message("[*] Building (rotation-frontend executable...\n")
+target_link_libraries(qtClient PRIVATE Qt6::Widgets Qt6::Core)
+target_link_libraries(qtClient PRIVATE protobuf_lib_frontend)
+message("[*] Building (qtClient executable...\n")

@@ -33,6 +33,8 @@ private:
     QTimer* timer = nullptr;
 
 private slots:
+    void onPlusButtonClicked();
+    void onMinusButtonClicked();
     void onRunButtonClicked();
 	void onCalibrateButtonClicked();
     void onHomeButtonClicked();

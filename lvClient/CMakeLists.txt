@@ -44,6 +44,8 @@ add_definitions(-D_PS_${CMAKE_SIZEOF_VOID_P})
 #----------------------------------------------------------------------
 # Include the gRPC's cmake build
 #----------------------------------------------------------------------
+set(gRPC_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(INSTALL_GTEST OFF CACHE BOOL "" FORCE)
 add_subdirectory(third_party/grpc ${CMAKE_CURRENT_BINARY_DIR}/grpc EXCLUDE_FROM_ALL)
 
 #----------------------------------------------------------------------
@@ -232,8 +234,8 @@ target_link_libraries(test_server
 #######################################################################
 
 # Google Test is bundled with gRPC
-set(GTEST_DIR "${CMAKE_SOURCE_DIR}/third_party/grpc/third_party/googletest")
-add_subdirectory(${GTEST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/googletest EXCLUDE_FROM_ALL)
+set(GTEST_DIR "${CMAKE_CURRENT_SOURCE_DIR}/third_party/grpc/third_party/googletest")
+#add_subdirectory(${GTEST_DIR} ${CMAKE_CURRENT_BINARY_DIR}/googletest EXCLUDE_FROM_ALL)
 
 add_executable(unit_tests
   tests/unit/lv_message_tests.cc
@@ -255,7 +257,7 @@ target_link_libraries(unit_tests
   ${_PROTOBUF_LIBPROTOBUF}
 )
 target_include_directories(unit_tests PRIVATE
-  "${CMAKE_SOURCE_DIR}/src"
+  "${CMAKE_CURRENT_SOURCE_DIR}/src"
   "${CMAKE_CURRENT_BINARY_DIR}"
   "${GTEST_DIR}/googletest/include"
 )

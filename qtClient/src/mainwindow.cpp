@@ -80,6 +80,8 @@ void MainWindow::status(std::string msg)
 
 void MainWindow::registersignals(Ui::MainWindow* ui)
 {
+    connect(ui->plusBtn, &QPushButton::clicked, this, &MainWindow::onPlusButtonClicked);
+    connect(ui->minusBtn, &QPushButton::clicked, this, &MainWindow::onMinusButtonClicked);
     connect(ui->TurnBtn, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
     connect(ui->CalBtn, &QPushButton::clicked, this, &MainWindow::onCalibrateButtonClicked);
     connect(ui->homeBtn, &QPushButton::clicked, this, &MainWindow::onHomeButtonClicked);
@@ -111,6 +113,22 @@ MainWindow::MainWindow(QWidget *parent) :
     registersignals(ui);
 
     status("Press 'Run' to start reading the angle and enable controls.");
+}
+
+void MainWindow::onPlusButtonClicked()
+{
+
+    status("Increased");
+
+    return;
+}
+
+void MainWindow::onMinusButtonClicked()
+{
+
+    status("Decreased");
+
+    return;
 }
 
 void MainWindow::onRunButtonClicked()

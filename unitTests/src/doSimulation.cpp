@@ -8,22 +8,22 @@
 #include <print>
 #include <cassert>
 #include <memory>
-#include "../../rotation-backend/src/rotation.h"
-#include "../../rotation-backend/src/hardwareControl.h"
-#include "../../rotation-backend/src/timerControl.h"
-#include "../../rotation-backend/src/fileControl.h"
-#include "../../rotation-backend/src/automationControl.h"
+#include "../../cppServer/src/rotation.h"
+#include "../../cppServer/src/hardwareControl.h"
+#include "../../cppServer/src/timerControl.h"
+#include "../../cppServer/src/fileControl.h"
+#include "../../cppServer/src/automationControl.h"
 
 #ifdef _WIN32
-#include "../../../rotation-frontend/src/shell.h"
+#include "../../../qtClient/src/shell.h"
 #endif
 #ifdef __APPLE__
-#include "../../rotation-frontend/src/shell.h"
+#include "../../qtClient/src/shell.h"
 #endif
 
 int main()
 {
-    bool isServerRunning = Execute("rotation-frontend");
+    bool isServerRunning = Execute("qtClient");
     if (!isServerRunning)
     {
         std::print("[*] Warning: Could not start frontend process\n");

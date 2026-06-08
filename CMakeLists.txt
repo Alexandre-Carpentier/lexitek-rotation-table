@@ -24,5 +24,5 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(cppServer)
 add_subdirectory(qtClient)
-add_subdirectory(lvClient)
+#add_subdirectory(lvClient)
 add_subdirectory(unitTests)

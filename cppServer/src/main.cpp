@@ -10,15 +10,15 @@
 #include <print>
 
 #ifdef _WIN32
-#include "../../../../rotation-frontend/src/shell.h"
+#include "../../../../qtClient/src/shell.h"
 #endif
 #ifdef __APPLE__
-#include "../../rotation-frontend/src/shell.h"
+#include "../../qtClient/src/shell.h"
 #endif
 
 int main()
 {
-    bool isServerRunning = Execute("rotation-frontend");
+    bool isServerRunning = Execute("qtClient");
     if (!isServerRunning) 
     {
     std::print("[*] Warning: Could not start frontend process\n");

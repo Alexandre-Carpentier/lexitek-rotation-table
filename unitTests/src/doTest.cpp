@@ -13,7 +13,7 @@
 #include "gtest/gtest.h"
 
 // Components testing
-#include "../../rotation-backend/src/timerControl.h"
+#include "../../cppServer/src/timerControl.h"
 TEST(test_components, timer_tests)
 {
 	std::print("[*] Test the timer class\n\n");
@@ -43,7 +43,7 @@ TEST(test_components, timer_tests)
 	EXPECT_GT(timer.elapsed_seconds(), 0.95);
 }
 
-#include "../../rotation-backend/src/fileControl.h"
+#include "../../cppServer/src/fileControl.h"
 TEST(test_components, file_tests)
 {
 	std::print("[*] Test the file class\n\n");
@@ -62,7 +62,7 @@ TEST(test_components, file_tests)
 	system("del toDelete.txt");
 }
 
-#include "../../rotation-backend/src/automationControl.h"
+#include "../../cppServer/src/automationControl.h"
 TEST(test_components, automation_tests)
 {
 	std::print("[*] Test the automation class\n\n");
@@ -72,7 +72,7 @@ TEST(test_components, automation_tests)
 	script.unloadScript();
 }
 
-#include "../../rotation-backend/src/hardwareControl.h"
+#include "../../cppServer/src/hardwareControl.h"
 TEST(test_components, hardware_tests)
 {
 	std::print("[*] Test the hardware class\n\n");
@@ -110,7 +110,7 @@ TEST(test_components, hardware_tests)
 #endif
 }
 
-#include "../../rotation-backend/src/rotation.h"
+#include "../../cppServer/src/rotation.h"
 // Typesafety
 TEST(TypeSafetyTest, frequency_clamps_to_valid_range) {
 	std::print("[Test] frequency_t clamps to valid range\n");

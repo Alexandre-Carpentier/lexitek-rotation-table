@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 //#define _BACKEND_EXEC
 #ifdef _BACKEND_EXEC
     std::print("[*] Backend Starting...\n");
-    bool isServerRunning = Execute("rotation-backend");
+    bool isServerRunning = Execute("cppServer");
     if (!isServerRunning) {
         std::print("Warning: Could not start backend process\n");
     }
