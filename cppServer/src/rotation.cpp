@@ -47,8 +47,6 @@ namespace dbg
 
 void computeVelocity(double& velocity, double elapsedSeconds);
 
-
-
 /////////////////////////////////////////////////////////////////////////////
 // 
 // define: Voltage in volt
@@ -90,8 +88,8 @@ struct velocity_t
 		if (m_value < m_minVelocity)m_value = m_minVelocity; if (m_value >= m_maxVelocity)m_value = m_maxVelocity;
 	}
 
-	constexpr velocity_t& operator= (double value) 
-	{ 
+	constexpr velocity_t& operator= (double value)
+	{
 		// Sanity check for velocity
 		if (value < m_minVelocity)value = m_minVelocity; if (value >= m_maxVelocity)value = m_maxVelocity;
 		m_value = value; return *this; 
@@ -586,6 +584,7 @@ private:
 						// Compute velocity
 						double val;
 						computeVelocity(val, elapsedTimeSec);
+
 						m_rotationData.velocityDegPerSec = val;
 
 						s_step2 = true;
