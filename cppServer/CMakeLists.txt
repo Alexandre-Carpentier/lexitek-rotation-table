@@ -1,5 +1,5 @@
 ﻿#########################################################################
-# CMake configuration for rotation-backend project
+# CMake configuration for cppServer project
 #
 
 #########################################################################
@@ -8,7 +8,7 @@ set(CMAKE_CXX_STANDARD 23)
 
 #########################################################################
 # Back end project
-project (rotation-backend)
+project (cppServer)
 
 #########################################################################
 # Fetch external dependencies
@@ -100,7 +100,7 @@ protobuf_generate(
 
 #########################################################################
 # LIB
-add_library(rotation-backend-static
+add_library(cppServer-static
 	src/main.cpp
 	src/rotation.h
 	src/rotation.cpp
@@ -114,21 +114,21 @@ add_library(rotation-backend-static
 	src/colors.h	
 )
 
-target_include_directories(rotation-backend-static PUBLIC 
+target_include_directories(cppServer-static PUBLIC 
 	${cppdaq_SOURCE_DIR}/app/src
 )
 
-target_include_directories(rotation-backend-static PUBLIC 
+target_include_directories(cppServer-static PUBLIC 
 	${lua_SOURCE_DIR}
 )
 
-target_link_libraries(rotation-backend-static PUBLIC cppDaq)
-target_link_libraries(rotation-backend-static PUBLIC lua)
-target_link_libraries(rotation-backend-static PRIVATE protobuf_lib_backend)
+target_link_libraries(cppServer-static PUBLIC cppDaq)
+target_link_libraries(cppServer-static PUBLIC lua)
+target_link_libraries(cppServer-static PRIVATE protobuf_lib_backend)
 
 #########################################################################
 # EXECUTABLE
-add_executable(rotation-backend
+add_executable(cppServer
 	src/main.cpp
 	src/rotation.h
 	src/rotation.cpp
@@ -142,15 +142,15 @@ add_executable(rotation-backend
 	src/colors.h	
 )
 
-target_include_directories(rotation-backend PUBLIC 
+target_include_directories(cppServer PUBLIC 
 	${cppdaq_SOURCE_DIR}/app/src
 )
 
-target_include_directories(rotation-backend PUBLIC 
+target_include_directories(cppServer PUBLIC 
 	${lua_SOURCE_DIR}
 )
 
-target_link_libraries(rotation-backend PRIVATE cppDaqStatic lua)
-target_link_libraries(rotation-backend PRIVATE protobuf_lib_backend)
+target_link_libraries(cppServer PRIVATE cppDaqStatic lua)
+target_link_libraries(cppServer PRIVATE protobuf_lib_backend)
 
-message("[*] Building rotation-backend executable...\n")
+message("[*] Building cppServer executable...\n")

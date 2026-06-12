@@ -21,8 +21,8 @@ if(NOT TARGET gtest_main)
 endif()
 
 #set include directories for production source
-include_directories(${PROJECT_SOURCE_DIR}../rotation-frontend/src/)
-include_directories(${PROJECT_SOURCE_DIR}../rotation-backend/src/)
+include_directories(${PROJECT_SOURCE_DIR}../qtClient/src/)
+include_directories(${PROJECT_SOURCE_DIR}../cppServer/src/)
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
@@ -31,19 +31,19 @@ add_executable(doTest
 	src/doTest.cpp
 )
 
-# Link against rotation-backend-static which provides cppDaqStatic transitively
+# Link against cppServer-static which provides cppDaqStatic transitively
 target_link_libraries(doTest PRIVATE 
 	gtest_main 
-	rotation-backend-static
+	cppServer-static
 )
 
 add_executable(doSimulation
 	src/doSimulation.cpp
 )
 
-# Link against rotation-backend-static which provides cppDaqStatic transitively
+# Link against cppServer-static which provides cppDaqStatic transitively
 target_link_libraries(doSimulation PRIVATE 
-	rotation-backend-static
+	cppServer-static
 )
 
 # Add google test

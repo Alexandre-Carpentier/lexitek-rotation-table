@@ -18,11 +18,11 @@
 
 int main()
 {
-    bool isServerRunning = Execute("qtClient");
-    if (!isServerRunning) 
-    {
-    std::print("[*] Warning: Could not start frontend process\n");
-    }
+    //bool isServerRunning = Execute("qtClient");
+    //if (!isServerRunning) 
+    //{
+    //std::print("[*] Warning: Could not start frontend process\n");
+    //}
 
     std::print("[*] Launching rotation table.\n");
     rotation::driver_r208 operateRotationSoftware;

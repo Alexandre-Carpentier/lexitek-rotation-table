@@ -28,7 +28,6 @@ namespace dbg
 	void print(std::format_string<Args...> fmt, Args&&... args)
 	{
 #ifdef __VERBOSE
-		std::print("[DEBUG] ");
 		std::print(fmt, std::forward<Args>(args)...);
 #endif
 	}
@@ -408,23 +407,23 @@ private:
 
 		////////////////////////////////////////////////
 		// Print states
-		dbg::print("[*] directionSign: {:.1f}\t", m_rotationData.directionSign); dbg::print(CRESET);
-		dbg::print(CGREEN"[*] Current angle : {:.1f}\t", m_rotationData.currentAngle.get()); dbg::print(CRESET);
-		dbg::print(CRED"[*] target angle: {:.1f}\t", m_rotationData.targetAngle.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] initial angle: {:.1f}\n", m_rotationData.initialAngle.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] remaining angle: {:.1f}\n", m_rotationData.remainingAngle.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] opposite angle: {:.1f}\n", m_rotationData.oppositeAngle.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] destination distance: {:.1f}\n", m_rotationData.destinationDistance.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] velocity: {:.1f}\n", m_rotationData.velocityDegPerSec.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] homeVoltage {:.1f}V ", m_rotationData.homeVoltage.get()); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] isComputingPositionRequested {} ", m_rotationData.isComputingPositionRequested); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] isMoving {} ", m_rotationData.isMoving); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] isTargetUpdated {} ", m_rotationData.isTargetUpdated); dbg::print(CRESET);
-		dbg::print(CRED"[*] isAtTarget {} ", m_rotationData.isAtTarget); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] isHome {} ", m_rotationData.isHome); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] isCalibrationRequested {} ", m_rotationData.isCalibrationRequested); dbg::print(CRESET);
-		dbg::print(CYELLOW"[*] isCalibrated {}\n", m_rotationData.isCalibrated); dbg::print(CRESET);
-		dbg::print(CGREEN"[*] Current duration (sec): {:.1f}\n", m_rotationData.duration); dbg::print(CRESET);
+		//dbg::print("[*] directionSign: {:.1f}\t", m_rotationData.directionSign); dbg::print(CRESET);
+		//dbg::print(CGREEN"[*] Current angle : {:.1f}\t", m_rotationData.currentAngle.get()); dbg::print(CRESET);
+		//dbg::print(CRED"[*] target angle: {:.1f}\t", m_rotationData.targetAngle.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] initial angle: {:.1f}\n", m_rotationData.initialAngle.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] remaining angle: {:.1f}\n", m_rotationData.remainingAngle.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] opposite angle: {:.1f}\n", m_rotationData.oppositeAngle.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] destination distance: {:.1f}\n", m_rotationData.destinationDistance.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] velocity: {:.1f}\n", m_rotationData.velocityDegPerSec.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] homeVoltage {:.1f}V ", m_rotationData.homeVoltage.get()); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] isComputingPositionRequested {} ", m_rotationData.isComputingPositionRequested); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] isMoving {} ", m_rotationData.isMoving); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] isTargetUpdated {} ", m_rotationData.isTargetUpdated); dbg::print(CRESET);
+		//dbg::print(CRED"[*] isAtTarget {} ", m_rotationData.isAtTarget); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] isHome {} ", m_rotationData.isHome); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] isCalibrationRequested {} ", m_rotationData.isCalibrationRequested); dbg::print(CRESET);
+		//dbg::print(CYELLOW"[*] isCalibrated {}\n", m_rotationData.isCalibrated); dbg::print(CRESET);
+		//dbg::print(CGREEN"[*] Current duration (sec): {:.1f}\n", m_rotationData.duration); dbg::print(CRESET);
 	}
 
 	void onStop()
@@ -566,7 +565,7 @@ private:
 				else if (s_step2 == false)
 				{
 					// Turn counter. More is accurate.
-					const size_t turnsToDo = 2;
+					const size_t turnsToDo = 1;
 
 					// Home reached counter
 
@@ -640,7 +639,7 @@ private:
 			switch (m_state)
 			{
 			case STATE::STOPPED:
-				dbg::print(CRED"[*] State: STOPPED\n"); dbg::print(CRESET);
+				dbg::print(CRED"[*] State: STOPPED\r"); dbg::print(CRESET);
 				onStop();
 				break;
 
