@@ -14,6 +14,7 @@
 			<Item Name="lexitekDriver_client.lvlib" Type="Library" URL="../lexitekDriver_client/lexitekDriver_client.lvlib"/>
 		</Item>
 		<Item Name="rotationTable.lvclass" Type="LVClass" URL="../rotationTable/rotationTable.lvclass"/>
+		<Item Name="test.vi" Type="VI" URL="../test.vi"/>
 		<Item Name="Dependencies" Type="Dependencies">
 			<Item Name="vi.lib" Type="Folder">
 				<Item Name="1D String Array to Delimited String.vi" Type="VI" URL="/&lt;vilib&gt;/AdvancedString/1D String Array to Delimited String.vi"/>
