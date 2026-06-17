@@ -11,10 +11,10 @@
 #include <memory>
 #include <thread>
 #include <format>
+#include <atomic>
 
 const double g_accuracy = 0.5; // Accuracy in degree for considering atTarget = true
 static std::string calFilename = "cal.txt"; // Calibration file name
-
 
 /////////////////////////////////////////////////////////////////////////////
 // 
@@ -194,8 +194,8 @@ public:
 
 	bool start(frequency_t freqHz)
 	{
-		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		std::print("[*] Starting polling operation\n");
+		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		if (!m_hardware.checkDaq())
 		{
 			std::print("[!] Running failed\n");
@@ -226,8 +226,8 @@ public:
 
 	bool doCalibrating()
 	{
-		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		std::print("[*] Calibrating\n");
+		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		m_rotationData.isCalibrationRequested = true;
 		m_state = STATE::CALIBRATING;
 		return true;
@@ -235,24 +235,33 @@ public:
 
 	bool doHoming()
 	{
-		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		std::print("[*] Homing\n");
+		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		m_state = STATE::HOMING;
 		return true;
 	}
 
+	// [[Deprecated]]Blocking calls occurs than can timeout
 	// Read current position
 	bool readAngle(angle_t& angle)
 	{
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
-		if(m_state == STATE::RUNNING || m_state == STATE::HOMING)
+		if (m_state == STATE::RUNNING || m_state == STATE::HOMING)
 		{
 			angle = m_rotationData.currentAngle;
 			return true;
 		}
 		angle = 0.0;
-		return false;	
+		return false;
 	}
+
+	//bool readAngle(angle_t& angle)
+	//{
+	//	angle = angle_t{
+	//		m_cachedAngle.load(std::memory_order_relaxed)
+	//	};
+	//	return true;
+	//}
 
 	// Set target position
 	bool setAngle(double angle)
@@ -291,7 +300,6 @@ private:
 
 	void updateStates()
 	{
-		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		// Update currentAngle state
 		static bool s_timerStarted = false;
 		// Update isHome state
@@ -310,16 +318,18 @@ private:
 		if (m_rotationData.homeVoltage.get() < 1.5) { // Assuming 1.5V as threshold for being at home
 			if (s_firstTrig == 0) {
 
-				std::print("\n[*] Home position detected\n");
+				std::print("\n[*] Home position detected\n");	
 				m_rotationData.isHome = true;
-				// Clockwize
+				// Clockwise
 				if (m_rotationData.directionSign>= 0)
 				{
+					std::lock_guard<std::mutex> lockApi(m_mutexApi);
 					m_rotationData.currentAngle = 0.0; // Reset angle to 0 when at home
 					m_rotationData.initialAngle = 0.0;
 				}
 				else
 				{
+					std::lock_guard<std::mutex> lockApi(m_mutexApi);
 					m_rotationData.currentAngle = 359.9; // Reset angle to 360 when at home
 					m_rotationData.initialAngle = 359.9;
 				}
@@ -361,6 +371,7 @@ private:
 			{
 				m_timer_move.start();
 				s_timerStarted = true;
+				std::lock_guard<std::mutex> lockApi(m_mutexApi);
 				m_rotationData.initialAngle = m_rotationData.currentAngle;
 			}
 
@@ -370,12 +381,14 @@ private:
 			// Clockwise rotation
 			if (m_rotationData.directionSign >= 0)
 			{
+				std::lock_guard<std::mutex> lockApi(m_mutexApi);
 				// d = vt + d0
 				m_rotationData.currentAngle = (m_rotationData.duration * m_rotationData.velocityDegPerSec.get()) + m_rotationData.initialAngle.get();
 			}
 			// Anti-clockwise rotation
 			if (m_rotationData.directionSign < 0)
 			{
+				std::lock_guard<std::mutex> lockApi(m_mutexApi);
 				// d = d0 - vt 
 				m_rotationData.currentAngle = m_rotationData.initialAngle.get() - (m_rotationData.duration * m_rotationData.velocityDegPerSec.get());
 			}
@@ -386,10 +399,10 @@ private:
 			s_timerStarted = false;
 		}
 
-
 		////////////////////////////////////////////////
 		// Update isMoving state
 		if (s_previousAngle.get() != m_rotationData.currentAngle.get()) {
+			std::lock_guard<std::mutex> lockApi(m_mutexApi);
 			m_rotationData.isMoving = true;
 			s_previousAngle = m_rotationData.currentAngle;
 		}
@@ -402,6 +415,7 @@ private:
 		{
 			double diff = std::fmod(std::abs(m_rotationData.targetAngle.get() - m_rotationData.currentAngle.get()), 360.0);
 			if (diff > 180.0) diff = 360.0 - diff;
+			std::lock_guard<std::mutex> lockApi(m_mutexApi);
 			m_rotationData.isAtTarget = (diff <= g_accuracy);
 		}
 
@@ -424,6 +438,12 @@ private:
 		//dbg::print(CYELLOW"[*] isCalibrationRequested {} ", m_rotationData.isCalibrationRequested); dbg::print(CRESET);
 		//dbg::print(CYELLOW"[*] isCalibrated {}\n", m_rotationData.isCalibrated); dbg::print(CRESET);
 		//dbg::print(CGREEN"[*] Current duration (sec): {:.1f}\n", m_rotationData.duration); dbg::print(CRESET);
+
+		// Dispose of the latest angle position
+		m_cachedAngle.store(
+			m_rotationData.currentAngle.get(),
+			std::memory_order_relaxed
+		);
 	}
 
 	void onStop()
@@ -517,7 +537,6 @@ private:
 
 	void onCalibrate()
 	{
-		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		if (m_state == STATE::CALIBRATING)
 		{
 			// TODO: handle timeout
@@ -529,6 +548,7 @@ private:
 			if (s_step0 == false)
 			{
 				std::print(CCYAN"[*] STEP0\n"); std::print(CRESET);
+				std::lock_guard<std::mutex> lockApi(m_mutexApi);
 				s_step0 = true;
 				m_hardware.doMove(true);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -542,6 +562,7 @@ private:
 				s_step1 = true;
 				// Stop a bit
 
+				std::lock_guard<std::mutex> lockApi(m_mutexApi);
 				m_hardware.doMove(false);
 				std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 			}
@@ -558,6 +579,7 @@ private:
 				if (s_runonece == 0)
 				{
 					std::print(CCYAN"[*] STEP2\n"); std::print(CRESET);
+					std::lock_guard<std::mutex> lockApi(m_mutexApi);
 					m_hardware.doMove(true);
 					m_timer_cal.start();
 					++s_runonece;
@@ -573,6 +595,7 @@ private:
 					std::print(CYELLOW"[*] Turns: {}\r", s_turns); std::print(CRESET);
 					if (s_turns == turnsToDo)
 					{
+						std::lock_guard<std::mutex> lockApi(m_mutexApi);
 						m_hardware.doMove(false);
 						m_timer_cal.stop();
 
@@ -759,6 +782,7 @@ private:
 	std::jthread m_serverThread;
 	STATE m_state = STATE::STOPPED;
 	ROTATIONSTRUCT m_rotationData{};
+	std::atomic<double> m_cachedAngle{ 0.0 }; // Used for instantaneous reading from grpc
 	frequency_t m_freqHz;
 
 	std::mutex m_mutexApi;

@@ -6,6 +6,7 @@
 // Licence:     LGPL-2.1-or-later
 /////////////////////////////////////////////////////////////////////////////
 #pragma once
+#include <chrono>
 #include <memory>
 #include <string>
 #include <print>
@@ -32,7 +33,7 @@ public:
 
 	grpc::Status SendCommand(grpc::ServerContext* context, const frontend_message* request, backend_response* response) override
 	{
-//#define VERBOSE__
+#define VERBOSE__
 #ifdef VERBOSE__	
 		std::print("[Backend] Get frontend msg\n");
 		std::print("  Source: {}\n", request->source());
@@ -43,17 +44,21 @@ public:
 		angle_t angle{ -1.0 };
 
 		// RUN COMMAND
-		if (request->command().substr(0, 4) == "RUN=")
+		if (request->command().starts_with("RUN="))
 		{
 			// Try convert
 			std::string freq_string = request->command().substr(4);
 			double freq = -1.0;
+
 			try
 			{
 				freq = std::stod(freq_string);
 			}
 			catch (const std::exception& e) {
 				std::print("[Backend] Invalid frequency value: '{}' Hz\n", freq_string);
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -62,6 +67,9 @@ public:
 			if (!m_table.start(frequency_t{ freq }))
 			{
 				std::print("[Backend] Failed to read angle\n");
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -77,6 +85,9 @@ public:
 			if (!m_table.stop())
 			{
 				std::print("[Backend] Failed to stop\n");
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -89,6 +100,9 @@ public:
 			if (!m_table.doCalibrating())
 			{
 				std::print("[Backend] Failed to calibrate\n");
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -101,6 +115,9 @@ public:
 			if (!m_table.doHoming())
 			{
 				std::print("[Backend] Failed to home\n");
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -112,6 +129,9 @@ public:
 			if(!m_table.readAngle(angle))
 			{
 				std::print("[Backend] Failed to read angle\n");
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -129,6 +149,9 @@ public:
 			} 
 			catch (const std::exception& e) {
 				std::print("[Backend] Invalid angle value: '{}' deg\n", angle_string);
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			} 
@@ -137,6 +160,9 @@ public:
 			if(!m_table.readAngle(angle))
 			{
 				std::print("[Backend] Failed to read angle\n");
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}
@@ -145,6 +171,9 @@ public:
 			if(!m_table.setAngle(new_angle))
 			{
 				std::print("[Backend] Failed to set angle: '{}' deg\n", new_angle.get());
+				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+					std::chrono::system_clock::now().time_since_epoch()
+				).count());
 				response->set_ok(false);
 				return grpc::Status::OK;
 			}	
@@ -153,6 +182,9 @@ public:
 		// Success
 		//std::print("[Backend] Request handled successfully\n");
 		response->set_rotation_angle(angle.get());
+		response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
+			std::chrono::system_clock::now().time_since_epoch()
+		).count());
 		response->set_ok(true);
 		return grpc::Status::OK;
 	}
