@@ -330,7 +330,7 @@ private:
 				else
 				{
 					std::lock_guard<std::mutex> lockApi(m_mutexApi);
-					m_rotationData.currentAngle = 359.9; // Reset angle to 360 when at home
+					m_rotationData.currentAngle = 359.9; // Reset angle to 359.9 when at home
 					m_rotationData.initialAngle = 359.9;
 				}
 
@@ -513,7 +513,6 @@ private:
 		if (m_state == STATE::HOMING)
 		{
 			// TODO: handle timeout
-
 			static bool homeStep = false;
 
 			// Go to home position
@@ -526,6 +525,7 @@ private:
 				// Stop a bit
 				m_hardware.doMove(false);
 				std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
 				// Flag current position = target = 0
 				m_rotationData.currentAngle = 0.0;
 				m_rotationData.targetAngle = 0.0;
