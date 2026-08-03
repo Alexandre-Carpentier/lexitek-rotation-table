@@ -39,7 +39,7 @@ inline digital_pin DIR_PIN{ 1 };				// P0.1 → R208 DB9 Pin 3 : Direction (HIGH
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// Interface dependencies injection
+// Dependencies injection
 //
 
 class hardware_interface
