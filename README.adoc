@@ -1,0 +1,120 @@
+= Documentation - Platine de rotation Lexitek R208
+:toc:
+:toclevels: 3
+:kroki-server-url: https://kroki.io
+:kroki-default-format: svg
+:kroki-fetch-diagram:
+
+== Presentation
+
+La *Lexitek R208* est une platine de rotation motorisee (moteur pas-a-pas) pilotee via un connecteur *DB9M*.
+Elle est interfacee ici avec une carte d'acquisition *National Instruments USB-6001* via une *carte d'interface*.
+
+== Connecteur DB9M - Lexitek R208
+
+[cols="1,2,2,5",options="header"]
+|===
+|Broche DB9 |Nom du signal |Direction |Description
+
+|1 |V+ |Entree (R208) |Alimentation moteur 12-24V DC
+|2 |SR1 |Entree (R208) |Reference de vitesse 1 (Opto-isole)
+|3 |SR2 |Entree (R208) |Reference de vitesse 2 (Opto-isole)
+|4 |DISABLE |Entree (R208) |Desactivation moteur - actif LOW (Opto-isole)
+|5 |DIRECTION |Entree (R208) |Sens de rotation (Opto-isole)
+|6 |PWR GND |- |Masse puissance
+|7 |LOGIC GND |- |Masse logique
+|8 |LOGIC/OPTO SUPPLY |Entree (R208) |Alimentation logique / opto 5-24V DC
+|9 |STEP |Entree (R208) |Impulsion de pas - frequence = vitesse (Opto-isole)
+|===
+
+WARNING: La broche *DISABLE (Pin 4)* est a *logique inversee* : LOW = moteur actif, HIGH = moteur desactive.
+WARNING: Aucun signal *HOME OUT* n'est present sur ce connecteur. Le capteur de position origine doit etre cable separement.
+
+== Connecteur Carte interface - RotationTableAdaptor (REV/A)
+
+[cols="1,2,2,5",options="header"]
+|===
+|Broche DB9 |Nom du signal |Direction |Description
+
+|1 |E_ROT |Entree (R208) |Desactivation moteur
+|2 |D_ROT |Entree (R208) |Sens de rotation
+|3 |CLK_ROT |Entree (R208) |Impulsion de pas - frequence = vitesse
+|4 |HOME_ROT |Sortie (OPB941W51) |Information position origine (0v = home)
+|===
+
+WARNING: Les entrees logique CMOS 3.3V de la carte d'adaptation attaquent des transistors MOSFET VN10LF qui ont des sorties a collecteurs ouverts qui pilotent les signaux d'entree du R208.
+
+== Schema de cablage - NI USB-6001 <-> Carte d'interface <-> Lexitek R208
+
+[mermaid]
+----
+graph LR
+    subgraph NI["NI USB-6001"]
+        AI0["AI0 - Entree analogique"]
+        AO0["AO0 - Sortie analogique"]
+        P00["P0.0 - Sortie numerique"]
+        P01["P0.1 - Sortie numerique"]
+        AGND["AGND - Masse analogique"]
+        DGND["DGND - Masse numerique"]
+    end
+
+    subgraph IFACE["Carte d'interface"]
+        E_ROT["Broche 1 - E_ROT"]
+        D_ROT["Broche 2 - D_ROT"]
+        CLK_ROT["Broche 3 - CLK_ROT"]
+        A1["Broche 4 - A1 (N/C)"]
+        A2["Broche 5 - A2 (N/C)"]
+        A3["Broche 6 - A3 (N/C)"]
+        A4["Broche 7 - A4 (N/C)"]
+    end
+
+    subgraph R208["Lexitek R208 (DB9M)"]
+        STEP["Broche 9 - STEP"]
+        SR1["Broche 2 - SR1"]
+        SR2["Broche 3 - SR2"]
+        DISABLE["Broche 4 - DISABLE"]
+        DIRECTION["Broche 5 - DIRECTION"]
+        VDD["Broche 1 - V+"]
+        GND_PWR["Broche 6 - PWR GND"]
+        GND_LOGIC["Broche 7 - LOGIC GND"]
+        SUPPLY["Broche 8 - LOGIC/OPTO SUPPLY"]
+    end
+
+    P00   -->|"activation moteur"| E_ROT
+    P01   -->|"sens de rotation"| D_ROT
+    AO0   -->|"signal PWM - vitesse"| CLK_ROT
+    AI0   -->|"lecture tension home"| HOME_ROT
+    AGND  --- GND_PWR
+    DGND  --- GND_PWR
+
+    E_ROT    -->|"ENABLE / MOVE"| MOVE
+    D_ROT    -->|"DIR"| DIRECTION
+    CLK_ROT  -->|"STEP"| STEP
+    HOME_ROT -->|"HOME OUT"| HOME
+----
+
+== Correspondance broches - hardwareControl.h
+
+[cols="2,3,1,2,2,4",options="header"]
+|===
+|Constante dans le code |Type de pin NI USB-6001 |Broche NI |Carte d'interface |Signal R208 (DB9M) |Description
+
+|`HOME_PIN { 0 }` |`analog_pin` (AI0) |AI0 |NA |Broche 5 |Lecture de la position origine
+|`CLOCK_PIN { 0 }` |`analog_pin_continuous` (AO0) |AO0 |Broche 3 |Broche 9 |Signal PWM - controle de la vitesse
+|`MOVE_PIN { 0 }` |`digital_pin` (P0.0) |P0.0 |Broche 1 |Broche 4 |Activation / arret du moteur
+|`DIR_PIN { 1 }` |`digital_pin` (P0.1) |P0.1 |Broche 2 |Broche 5 |Sens de rotation
+|===
+
+== Logique de controle
+
+[cols="2,2,4",options="header"]
+|===
+|Signal |Valeur |Effet
+
+|`DIR_PIN` |`HIGH` |Rotation *horaire*
+|`DIR_PIN` |`LOW` |Rotation *anti-horaire*
+|`MOVE_PIN` |`HIGH` |Moteur *active*
+|`MOVE_PIN` |`LOW` |Moteur *desactive*
+|`CLOCK_PIN` |frequence |Vitesse en Hz (max : 2000 Hz)
+|`HOME_PIN` |tension |Detection position origine
+|===
