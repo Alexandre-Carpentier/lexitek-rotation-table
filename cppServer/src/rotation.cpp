@@ -791,7 +791,6 @@ private:
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// PIMPL class
 // This class is only to make a clean header (proxy).
 
 rotation::driver_r208::driver_r208()
