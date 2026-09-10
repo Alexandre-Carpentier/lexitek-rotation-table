@@ -1,0 +1,58 @@
+{
+  "version": 3,
+  "vendor": {
+    "microsoft.com/VisualStudioSettings/CMake/1.0": {
+      "hostOS": [ "Windows" ]
+    }
+  },
+  "configurePresets": [
+    {
+      "name": "x64-Debug",
+      "displayName": "x64 Debug",
+      "description": "x64 Debug configuration with Ninja",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug",
+        "CMAKE_CONFIGURATION_TYPES": "Debug"
+      },
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}"
+    },
+    {
+      "name": "x64-Release",
+      "displayName": "x64 Release",
+      "description": "x64 Release configuration with Ninja",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CONFIGURATION_TYPES": "Release"
+      },
+      "binaryDir": "${sourceDir}/out/build/${presetName}",
+      "installDir": "${sourceDir}/out/install/${presetName}"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "x64-Debug",
+      "configurePreset": "x64-Debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x64-Release",
+      "configurePreset": "x64-Release",
+      "configuration": "Release"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "x64-Debug",
+      "configurePreset": "x64-Debug",
+      "configuration": "Debug"
+    },
+    {
+      "name": "x64-Release",
+      "configurePreset": "x64-Release",
+      "configuration": "Release"
+    }
+  ]
+}
