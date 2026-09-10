@@ -100,6 +100,7 @@ namespace rotation
 		// Opaque ptr logic
 		class rotationimpl;
 		std::unique_ptr<rotationimpl> impl;
+
 		// Opaque ptr dependencies
 		struct dependenciesimpl;
 		std::unique_ptr<dependenciesimpl> implDeps;

@@ -15,6 +15,14 @@ cmake_minimum_required(VERSION 3.20)
 set(CMAKE_CXX_STANDARD 23)
 
 #########################################################################
+# Address Sanitizer
+option(ENABLE_ASAN "Enable Address Sanitizer" ON)
+if(ENABLE_ASAN)
+  add_compile_options(/fsanitize=address)
+  add_link_options(/fsanitize=address)
+endif()
+
+#########################################################################
 # 
 project(lexitek-rotation-table)
 
