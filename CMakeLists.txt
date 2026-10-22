@@ -26,6 +26,12 @@ endif()
 # 
 project(lexitek-rotation-table)
 
+if(MSVC)
+  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+  add_compile_options($<$<CONFIG:Release>:/O1 /DNDEBUG /GL>)
+  add_link_options($<$<CONFIG:Release>:/LTCG /DEBUG:NONE /OPT:REF /OPT:ICF>)
+endif()
+
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

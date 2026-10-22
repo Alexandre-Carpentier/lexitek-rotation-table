@@ -16,12 +16,15 @@
 #include "../../qtClient/src/shell.h"
 #endif
 
-int main()
+int main(int argc, char **argv)
 {
-    bool isServerRunning = Execute("qtClient");
-    if (!isServerRunning) 
+    if (argc > 1)
     {
-    std::print("[*] Warning: Could not start frontend process\n");
+        bool isServerRunning = Execute("qtClient");
+        if (!isServerRunning)
+        {
+            std::print("[*] Warning: Could not start frontend process\n");
+        }
     }
 
     std::print("[*] Launching rotation table.\n");

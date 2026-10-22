@@ -56,6 +56,38 @@ uint8_t frontend_rpc_send_command(const std::string& command, std::string& respo
 	return 0x0;
 }
 
+uint8_t frontend_rpc_run(double frequency, std::string& response)
+{
+    run run_request;
+    run_request.set_source("frontend run");
+	run_request.set_frequency(frequency);
+    run_request.set_timestamp_ms(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()
+        ).count()
+    );
+
+    backend_response ack;
+    grpc::ClientContext context;
+
+    grpc::Status status = grpc_stub->StartCommand(&context, run_request, &ack);
+
+    if (status.ok())
+    {
+        //#define VERBOSE__
+#ifdef VERBOSE__	
+        std::print("[Frontend] Rotating.\n");
+        std::print("[Frontend] Read angle from backend: \'{}\'deg\n", ack.rotation_angle());
+#endif
+        response = std::format("{:.1f}", ack.rotation_angle());
+    }
+    else
+    {
+        std::print("[Frontend] Erreur gRPC: {}\n", status.error_message());
+    }
+    return 0x0;
+}
+
 uint8_t frontend_rpc_close()
 {
     std::print("[Frontend] Closing gRPC client\n");
