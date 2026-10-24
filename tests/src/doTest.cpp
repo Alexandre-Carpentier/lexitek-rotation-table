@@ -216,7 +216,7 @@ TEST(test_system, cleanup) {
 //	EXPECT_TRUE(condition)	Condition est vraie
 //	EXPECT_FALSE(condition)	Condition est fausse
 //	-- -
-//	✅ Chaînes de caractères(const char*)
+//	✅ Chaînes de caractères(const char*) 
 //	Macro	Description
 //	EXPECT_STREQ(a, b)	Contenu identique
 //	EXPECT_STRNE(a, b)	Contenu différent

@@ -51,6 +51,7 @@ public:
 	virtual void acquires(double& voltage) = 0;
 	virtual bool setSpeed(double freqHz) = 0;
 	virtual bool doMove(bool isMoving) = 0;
+	virtual bool moveTo(int64_t clockCount) = 0;
 	virtual void doClockwizeDirection(bool isClockWise) = 0;
 	virtual bool checkDaq() = 0;
 	virtual ~hardware_interface() = default; // Mandatory for childrens
@@ -138,7 +139,7 @@ public:
 	{
 		std::lock_guard<std::mutex> lockInit(m_mutexAPI);
 		static bool s_state = false;
-		if (isMoving != s_state) // Only update if state changed	
+		if (isMoving != s_state) // Only update if s_state changed	
 		{
 			s_state = isMoving; // Save state
 			
@@ -153,6 +154,13 @@ public:
 			//m_daq->WriteDigitalPin(MOVE_PIN, digital_state::HIGH); // Disable
 			return m_daq->StopAnalogPWM(CLOCK_PIN);
 		}
+		return true;
+	}
+
+	virtual bool moveTo(int64_t clockCount) override
+	{
+		std::lock_guard<std::mutex> lockInit(m_mutexAPI);
+		std::print(CMAGENTA"[*] moveTo({}) called\n", clockCount); std::print(CRESET);
 		return true;
 	}
 
@@ -327,6 +335,12 @@ public:
 			std::print(CMAGENTA"[*] SIMULATE doMove() stop moving\n"); std::print(CRESET);
 			m_isMoving = false;
 		}
+		return true;
+	}
+
+	virtual bool moveTo(int64_t clockCount) override
+	{
+		std::print(CMAGENTA"[*] SIMULATE moveTo({})\n", clockCount); std::print(CRESET);
 		return true;
 	}
 
