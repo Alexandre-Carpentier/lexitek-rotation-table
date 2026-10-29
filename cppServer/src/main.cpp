@@ -18,6 +18,8 @@
 
 int main(int argc, char **argv)
 {
+    argc = 2;
+
     if (argc > 1)
     {
         bool isServerRunning = Execute("qtClient");

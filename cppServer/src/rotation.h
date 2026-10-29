@@ -8,7 +8,7 @@
 #pragma	once
 #include <cmath>
 #include <memory>
-#include <string>
+//#include <string>
 #include <expected>
 
 /////////////////////////////////////////////////////////////////////////////
@@ -61,6 +61,61 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////
 // 
+// define: Voltage in volt
+//
+
+struct volt_t
+{
+	constexpr volt_t() = default;
+
+	template<typename T> requires std::same_as<T, double>
+	explicit constexpr volt_t(T value) : m_value(value) {
+		if (m_value < 0)m_value = 0.0; if (m_value >= m_maxVoltage)m_value = m_maxVoltage;
+	}
+
+	constexpr volt_t& operator= (double value)
+	{
+		// Sanity check for voltage
+		if (value < 0)value = 0.0; if (value >= m_maxVoltage)value = m_maxVoltage;
+		m_value = value; return *this;
+	}
+
+	[[nodiscard]] constexpr double get() const { return m_value; }
+private:
+	double m_value{};
+	static constexpr double m_maxVoltage = 48.0; // Max voltage in volt
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// 
+// define: Velocity in deg/sec
+//
+
+struct velocity_t
+{
+	constexpr velocity_t() = default;
+
+	template<typename T> requires std::same_as<T, double>
+	explicit constexpr velocity_t(T value) : m_value(value) {
+		if (m_value < m_minVelocity)m_value = m_minVelocity; if (m_value >= m_maxVelocity)m_value = m_maxVelocity;
+	}
+
+	constexpr velocity_t& operator= (double value)
+	{
+		// Sanity check for velocity
+		if (value < m_minVelocity)value = m_minVelocity; if (value >= m_maxVelocity)value = m_maxVelocity;
+		m_value = value; return *this;
+	}
+
+	[[nodiscard]] constexpr double get() const { return m_value; }
+private:
+	double m_value{};
+	static constexpr double m_maxVelocity = 48.0; // Max voltage in volt
+	static constexpr double m_minVelocity = -48.0; // Min voltage in volt
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// 
 // Rotation main class:
 // 
 
@@ -76,7 +131,7 @@ namespace rotation
 	{
 	public:
 		// This struct is used to inject dependencies in the constructor.
-		// Caller can choose to pass production or mock dependencies for testing.
+		// Caller can choose to pass production or mock dependencies for testing if needed.
 		struct dependencies {
 			hardware_interface& hardware;
 			timer_interface&    timer1;

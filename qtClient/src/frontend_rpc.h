@@ -14,15 +14,57 @@
 #include "MSG_Position.grpc.pb.h"
 
 std::unique_ptr<ReadAngleRPC::Stub> grpc_stub;
-uint8_t frontend_rpc_init()
+std::shared_ptr<grpc::Channel> g_channel;
+
+int frontend_rpc_init()
 {
-    auto channel = grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials());
-    grpc_stub = ReadAngleRPC::NewStub(channel);
+    g_channel = grpc::CreateChannel("localhost:50051", grpc::InsecureChannelCredentials());
+
+    grpc_stub = ReadAngleRPC::NewStub(g_channel);
     std::print("[Frontend] Client gRPC initialized (localhost:50051)\n");
     return 0x0;
 }
 
-uint8_t frontend_rpc_send_command(const std::string& command, std::string& response)
+int frontend_rpc_status()
+{
+    grpc_connectivity_state state = g_channel->GetState(true);
+
+    if (state != GRPC_CHANNEL_READY)
+    {
+        std::print("[Frontend] Client gRPC not connected\n");
+        return -1;
+    }
+
+    std::print("[Frontend] Client gRPC connected\n");
+    return 0;
+}
+
+int frontend_rpc_connect()
+{
+    // Timeout
+    auto deadline = std::chrono::system_clock::now()
+        + std::chrono::seconds(2);
+
+    if (!g_channel->WaitForConnected(deadline))
+    {
+		std::print("[Frontend] Client gRPC connection failed\n");
+		return -1;
+    }
+
+    std::print("[Frontend] Client gRPC connection success\n");
+    return 0;
+}
+
+int frontend_rpc_disconnect()
+{
+    g_channel.reset();
+
+    std::print("[Frontend] Client gRPC disconnected\n");
+    return 0;
+}
+
+
+int frontend_rpc_send_command(const std::string& command, std::string& response)
 {
     frontend_message request;
     request.set_source("frontend");
@@ -56,7 +98,7 @@ uint8_t frontend_rpc_send_command(const std::string& command, std::string& respo
 	return 0x0;
 }
 
-uint8_t frontend_rpc_run(double frequency, std::string& response)
+int frontend_rpc_run(double frequency, std::string& response)
 {
     run run_request;
     run_request.set_source("frontend run");
@@ -88,7 +130,7 @@ uint8_t frontend_rpc_run(double frequency, std::string& response)
     return 0x0;
 }
 
-uint8_t frontend_rpc_close()
+int frontend_rpc_close()
 {
     std::print("[Frontend] Closing gRPC client\n");
     if(grpc_stub)

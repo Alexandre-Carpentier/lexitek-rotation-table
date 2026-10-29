@@ -48,7 +48,8 @@ set(CMAKE_AUTORCC ON)
 
 #########################################################################
 # EXECUTABLE
-add_executable(qtClient WIN32 src/main.cpp
+#add_executable(qtClient WIN32 src/main.cpp #WIN32 to remove console on WINDOWS
+add_executable(qtClient src/main.cpp
 	src/mainwindow.h 
 	src/mainwindow.cpp
 	src/frontend_rpc.h 

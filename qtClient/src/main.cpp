@@ -16,6 +16,7 @@
 
 int main(int argc, char *argv[])
 {
+
     ///////////////////////////////////////////////////////////////////////////////////////
     //
 	// First start the remote backend process (server)
@@ -29,10 +30,12 @@ int main(int argc, char *argv[])
         std::print("Warning: Could not start backend process\n");
     }
 #endif
+
     ///////////////////////////////////////////////////////////////////////////////////////
     // 
 	// Start the frontend (client)
     //
+
     std::print("[*] Frontend Starting...\n");
 
     QApplication app (argc, argv);

@@ -104,6 +104,8 @@ add_library(cppServer-static
 	src/main.cpp
 	src/rotation.h
 	src/rotation.cpp
+	src/rotationTimeBased.h
+	src/rotationClockBased.h
 	src/backend_rpc.h
 
 	src/hardwareControl.h
@@ -132,6 +134,8 @@ add_executable(cppServer
 	src/main.cpp
 	src/rotation.h
 	src/rotation.cpp
+	src/rotationTimeBased.h
+	src/rotationClockBased.h
 	src/backend_rpc.h
 
 	src/hardwareControl.h

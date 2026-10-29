@@ -10,10 +10,13 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <chrono>
+#include <thread>
 
 #include "frontend_rpc.h"
 
 bool g_isReading = false;
+bool g_isConnected = false;
+std::jthread g_readingThread;
 
 bool isValidAngle(std::string angle_str)
 {
@@ -131,10 +134,51 @@ void MainWindow::onMinusButtonClicked()
     return;
 }
 
+void checkConnectionThread()
+{
+	std::stop_token st = g_readingThread.get_stop_token();
+	while (!st.stop_requested())
+	{
+		if (g_isConnected)
+		{
+			if (frontend_rpc_status() != 0)
+			{
+				std::print("[Frontend] gRPC client connection failed\n");
+				g_isConnected = false;
+                g_readingThread.request_stop();
+
+			}
+				g_isConnected = true;
+		}
+		std::this_thread::sleep_for(std::chrono::seconds(5));
+	}
+}
+
 void MainWindow::onRunButtonClicked()
 {
-    g_isReading = !g_isReading;
     std::string reply;
+
+    if (!g_isConnected)
+    {
+        if (frontend_rpc_connect() != 0)
+        {
+			g_isReading = false;
+			g_isConnected = false;
+			return;
+
+		}
+            g_isConnected = true;
+    }
+
+    if (frontend_rpc_status() != 0)
+    {
+        status("gRPC client not connected.");
+        g_isReading = false;
+        g_isConnected = false;
+        return;
+    }
+
+    g_isReading = true;
 
     if(g_isReading)
     {
@@ -169,7 +213,9 @@ void MainWindow::onRunButtonClicked()
         ui->TargetAngleEdit->setText(QString::fromStdString(reply));
         ui->CurrentAngleEdit->setText(QString::fromStdString(reply));
 
-        // Update every second
+        g_readingThread = std::jthread(checkConnectionThread);
+
+        // Update every delay
         timer->start(500); 
 
         ui->TurnBtn->setText("Stop");
@@ -180,8 +226,10 @@ void MainWindow::onRunButtonClicked()
         lock_controls(true);
 
         timer->stop();
-        status("Measurement stopped.");
+        g_readingThread.request_stop();
+        frontend_rpc_disconnect();
 
+        status("Measurement stopped.");
         ui->TurnBtn->setText("Run");
     }
     return;

@@ -19,14 +19,14 @@ set(CMAKE_CXX_STANDARD 23)
 project(lexitek-rotation-table)
 
 if(MSVC)
-  set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
+  #set(CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE ON)
 
-  add_compile_options("$<$<CONFIG:Release>:/O1>")
-  add_compile_definitions("$<$<CONFIG:Release>:NDEBUG>")
+  #add_compile_options("$<$<CONFIG:Release>:/O1>")
+  #add_compile_definitions("$<$<CONFIG:Release>:NDEBUG>")
 
-  add_link_options(
-    "$<$<CONFIG:Release>:/DEBUG:NONE;/OPT:REF;/OPT:ICF>"
-  )
+  #add_link_options(
+  #  "$<$<CONFIG:Release>:/DEBUG:NONE;/OPT:REF;/OPT:ICF>"
+  #)
 endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
