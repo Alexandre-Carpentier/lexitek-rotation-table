@@ -29,7 +29,7 @@ std::unique_ptr<grpc::Server> g_backend_grpc_server;
 class ReadAngleImpl final : public ReadAngleRPC::Service
 {
 public:
-	ReadAngleImpl(rotation::driver_r208& table) :m_table(table){}
+	ReadAngleImpl(lexitek& table) :m_table(table){}
 
 	grpc::Status SendCommand(grpc::ServerContext* context, const frontend_message* request, backend_response* response) override
 	{
@@ -190,7 +190,7 @@ public:
 	}
 
 private:
-	rotation::driver_r208& m_table; // Reference to the rotation table driver
+	lexitek& m_table; // Reference to the rotation table driver
 };
 }
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -198,7 +198,7 @@ private:
 // Initialize and start the gRPC server to listen for frontend messages
 // 
 //
-uint8_t backend_rpc_init(rotation::driver_r208 &table, std::stop_token stopToken)
+uint8_t backend_rpc_init(lexitek &table, std::stop_token stopToken)
 {
 	if (stopToken.stop_requested()) return 0x0;
 

@@ -25,17 +25,45 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// OPAQUE implementation of the rotation::driver_r208 class external dependencies
-//
+// OPAQUE implementation of the lexitek class external dependencies
+// instanciate real dependencies here
 
-struct rotation::driver_r208::dependenciesimpl
+struct lexitek::dependenciesimpl
 {
-	production_hardware hardware; // Real hardware for prod
+	timeBased_hardware hardware; // Real hardware for prod
 	production_timer    timer1;
 	production_timer    timer2;
 	production_file     file;
 	production_automation script;
 };
+
+///////////////////////////////////////////////////////////////////////////////////////
+//
+// Interface class
+//
+
+class lexitek::rotationImpl
+{
+public:
+	virtual ~rotationImpl() = 0;
+
+	virtual bool start(frequency_t freqHz) = 0;
+	virtual bool stop() = 0;
+	virtual bool doCalibrating() = 0;
+	virtual bool doHoming() = 0;
+	virtual bool readAngle(angle_t& angle) = 0;
+	virtual bool setAngle(double angle) = 0;
+
+	// Opaque ptr logic for time based positionning
+	class rotationTimeBasedImpl;
+	//std::unique_ptr<rotationTimeBasedImpl> timeImpl;
+
+	// Opaque ptr logic for clock based positionning
+	class rotationClockBasedImpl;
+	//std::unique_ptr<rotationClockBasedImpl> clockImpl;
+};
+
+lexitek::rotationImpl::~rotationImpl() = default;
 
 /////////////////////////////////////////////////////////////////////////////
 // 
@@ -47,48 +75,66 @@ struct rotation::driver_r208::dependenciesimpl
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// This class is only to provide a clean header (proxy).
+// This class is only to provide a clean header (opaque proxy).
 // refer to pimpl idiom
 
-rotation::driver_r208::driver_r208()
+lexitek::lexitek(positionnning_mode mode)
 	: implDeps(std::make_unique<dependenciesimpl>())
 {
-	impl = std::make_unique<rotationimpl>(*this,
-		implDeps->hardware, implDeps->timer1, implDeps->timer2, implDeps->file, implDeps->script);
+	// Factory
+	switch (mode)
+	{
+
+	case positionnning_mode::TIME_BASED:
+	{
+		impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
+			implDeps->hardware, implDeps->timer1, implDeps->timer2, implDeps->file, implDeps->script);
+		break;
+	}
+	case positionnning_mode::CLOCK_BASED:
+	{
+/*		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
+			implDeps->hardware, implDeps->timer1, implDeps->timer2, implDeps->file, implDeps->script);*/
+		break;
+	}
+
+	}
+
+
 	std::print("[*] driver_r208 loading (production)\n");
 }
 
-rotation::driver_r208::driver_r208(dependencies deps)
-	: impl(std::make_unique<rotationimpl>(*this,
+lexitek::lexitek(positionnning_mode mode, dependencies deps)
+	: impl(std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
 		deps.hardware, deps.timer1, deps.timer2, deps.file, deps.script))
 {
-	std::print("[*] driver_r208 loading (injected)\n");
+	std::print("[*] lexitek loading (injected)\n");
 }
 
-bool rotation::driver_r208::start(frequency_t freqHz)
+bool lexitek::start(frequency_t freqHz)
 {
 	assert(freqHz.get() > 0.0);
 	assert(freqHz.get() <= 2000.0);
 	return impl->start(freqHz);
 }
 
-bool rotation::driver_r208::stop()
+bool lexitek::stop()
 {
 	std::print("[*] driver_r208 stopping\n");
 	return impl->stop();
 }
 
-bool rotation::driver_r208::doCalibrating()
+bool lexitek::doCalibrating()
 {
 	return impl->doCalibrating();
 }
 
-bool rotation::driver_r208::doHoming()
+bool lexitek::doHoming()
 {
 	return impl->doHoming();
 }
 
-bool rotation::driver_r208::readAngle(angle_t& angle)
+bool lexitek::readAngle(angle_t& angle)
 {
 	angle_t val{};
 	if(!impl->readAngle(val))
@@ -100,7 +146,7 @@ bool rotation::driver_r208::readAngle(angle_t& angle)
 	return true;
 }
 
-bool rotation::driver_r208::setAngle(angle_t angle)
+bool lexitek::setAngle(angle_t angle)
 {
 	if(!impl->setAngle(angle.get()))
 	{
@@ -110,7 +156,7 @@ bool rotation::driver_r208::setAngle(angle_t angle)
 	return true;
 }
 
-rotation::driver_r208::~driver_r208()
+lexitek::~lexitek()
 {
-	std::print("[*] driver_r208 finnish\n");
+	std::print("[*] lexitek finnish\n");
 }

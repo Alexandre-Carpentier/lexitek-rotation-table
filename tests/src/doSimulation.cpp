@@ -34,7 +34,7 @@ int main()
     production_timer t1, t2;
     production_file f;
     production_automation script;
-    rotation::driver_r208 rotation{ rotation::driver_r208::dependencies{ hw, t1, t2, f, script } };
+    lexitek rotation{ positionnning_mode::TIME_BASED,lexitek::dependencies{ hw, t1, t2, f, script } };
 
     while (getchar() != EOF)
     {

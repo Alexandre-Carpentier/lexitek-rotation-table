@@ -125,39 +125,42 @@ struct timer_interface;
 struct file_interface;
 struct automation_interface;
 
-namespace rotation
+enum class positionnning_mode {
+	TIME_BASED,
+	CLOCK_BASED
+};
+
+class lexitek
 {
-	class driver_r208 
-	{
-	public:
-		// This struct is used to inject dependencies in the constructor.
-		// Caller can choose to pass production or mock dependencies for testing if needed.
-		struct dependencies {
-			hardware_interface& hardware;
-			timer_interface&    timer1;
-			timer_interface&    timer2;
-			file_interface&     file;
-			automation_interface& script;
-		};
-
-		explicit driver_r208();// (1) Default constructor for prod
-		[[deprecated]] explicit driver_r208(dependencies deps); // Inject for tests only. This is why it is marked as deprecated to avoid misuse in production code.
-		~driver_r208();
-
-		bool start(frequency_t frequency); // (2) table.start(frequency{100.0});
-		bool stop(); // (6) Stop the table
-		bool doCalibrating(); // (3) Calibrate will set the rotation table in a known state
-		bool doHoming();
-		bool readAngle(angle_t& angle); // (5) Read current position
-		bool setAngle(angle_t angle); // (4) Go to a position
-
-	private:
-		// Opaque ptr logic
-		class rotationimpl;
-		std::unique_ptr<rotationimpl> impl;
-
-		// Opaque ptr dependencies
-		struct dependenciesimpl;
-		std::unique_ptr<dependenciesimpl> implDeps;
+public:
+	// This struct is used to inject dependencies in the constructor.
+	// Caller can choose to pass production or mock dependencies for testing if needed.
+	struct dependencies {
+		hardware_interface& hardware;
+		timer_interface& timer1;
+		timer_interface& timer2;
+		file_interface& file;
+		automation_interface& script;
 	};
-}
+
+	explicit lexitek(positionnning_mode mode);// (1) Default constructor for prod
+	[[deprecated]] explicit lexitek(positionnning_mode mode, dependencies deps); // Inject for tests only. This is why it is marked as deprecated to avoid misuse in production code.
+	~lexitek();
+
+	bool start(frequency_t frequency); // (2) table.start(frequency{100.0});
+	bool stop(); // (6) Stop the table
+	bool doCalibrating(); // (3) Calibrate will set the rotation table in a known state
+	bool doHoming();
+	bool readAngle(angle_t& angle); // (5) Read current position
+	bool setAngle(angle_t angle); // (4) Go to a position
+
+private:
+	// Opaque ptr logic for time based positionning
+	class rotationImpl;
+	std::unique_ptr<rotationImpl> impl;
+
+	// Opaque ptr dependencies
+	struct dependenciesimpl;
+	std::unique_ptr<dependenciesimpl> implDeps;
+};
+

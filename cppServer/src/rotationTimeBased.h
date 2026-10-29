@@ -86,14 +86,14 @@ struct ROTATIONSTRUCT {
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// OPAQUE implementation of the rotation::driver_r208 class
+// OPAQUE implementation for time based positionning
 //
 
-class rotation::driver_r208::rotationimpl
+class lexitek::rotationImpl::rotationTimeBasedImpl final : public lexitek::rotationImpl
 {
 public:
 	// Inject all dependencies in the constructor. Caller can choose to pass production or mock dependencies for testing.
-	explicit rotationimpl(rotation::driver_r208& parent, hardware_interface& hw, timer_interface& t1, timer_interface& t2, file_interface& f, automation_interface& script)
+	explicit rotationTimeBasedImpl(lexitek& parent, hardware_interface& hw, timer_interface& t1, timer_interface& t2, file_interface& f, automation_interface& script)
 		: m_parent(parent), m_hardware(hw), m_timer_move(t1), m_timer_cal(t2), m_file(f), m_script(script)
 	{
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
@@ -101,9 +101,9 @@ public:
 		std::print("[*] Backend initialized successfully\n");
 	};
 
-	~rotationimpl() {
+	~rotationTimeBasedImpl() override{
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
-		std::print("[*]  ~rotationimpl() called");
+		std::print("[*]  ~rotationTimeBasedImpl() called");
 		if (m_state != STATE::STOPPED)
 		{
 			std::print("[*] Stopping polling loop\n");
@@ -124,7 +124,7 @@ public:
 		std::print("[*] Delete done\n");
 	};
 
-	bool start(frequency_t freqHz)
+	bool start(frequency_t freqHz) override
 	{
 		std::print("[*] Starting polling operation\n");
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
@@ -142,7 +142,7 @@ public:
 		return true;
 	}
 
-	bool stop()
+	bool stop() override
 	{
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		resetData();
@@ -156,7 +156,7 @@ public:
 		return true;
 	}
 
-	bool doCalibrating()
+	bool doCalibrating() override
 	{
 		std::print("[*] Calibrating\n");
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
@@ -165,7 +165,7 @@ public:
 		return true;
 	}
 
-	bool doHoming()
+	bool doHoming() override
 	{
 		std::print("[*] Homing\n");
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
@@ -175,7 +175,7 @@ public:
 
 	// [[Deprecated]]Blocking calls occurs than can timeout
 	// Read current position
-	bool readAngle(angle_t& angle)
+	bool readAngle(angle_t& angle) override
 	{
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
 		if (m_state == STATE::RUNNING || m_state == STATE::HOMING)
@@ -213,7 +213,7 @@ private:
 	void init()
 	{
 		assert(&m_parent != nullptr);
-		std::print("[*] Running rotationimpl\n");
+		std::print("[*] Running rotationTimeBasedImpl\n");
 
 		resetData();
 
@@ -384,7 +384,12 @@ private:
 		if (m_state == STATE::STOPPED)
 		{
 			// TODO: Reset every states
-			m_hardware.doMove(false); // Stop hardware
+			static STATE s_previousState = STATE::RUNNING;
+			if(s_previousState != m_state)
+			{
+				s_previousState = m_state;
+				m_hardware.doMove(false); // Stop hardware
+			}
 		}
 	}
 
@@ -701,7 +706,7 @@ private:
 	}
 
 	// This is external dependencies
-	rotation::driver_r208& m_parent;
+	lexitek& m_parent;
 	hardware_interface& m_hardware;
 	timer_interface& m_timer_cal;
 	timer_interface& m_timer_move;

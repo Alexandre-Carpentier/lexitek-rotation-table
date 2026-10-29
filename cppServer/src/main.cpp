@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     }
 
     std::print("[*] Launching rotation table.\n");
-    rotation::driver_r208 operateRotationSoftware;
+    lexitek operateRotationSoftware(positionnning_mode::TIME_BASED);
 
     while(getchar() != EOF)
     {

@@ -157,7 +157,7 @@ void checkConnectionThread()
 void MainWindow::onRunButtonClicked()
 {
     std::string reply;
-
+    g_isReading = !g_isReading;
     if (!g_isConnected)
     {
         if (frontend_rpc_connect() != 0)
@@ -170,16 +170,20 @@ void MainWindow::onRunButtonClicked()
             g_isConnected = true;
     }
 
-    if (frontend_rpc_status() != 0)
+
+/*    if (frontend_rpc_status() != 0)
     {
         status("gRPC client not connected.");
         g_isReading = false;
         g_isConnected = false;
         return;
-    }
+    }*/
+/*    else
+    {
+        
+    }*/
 
-    g_isReading = true;
-
+    
     if(g_isReading)
     {
         // Unlock controls
@@ -228,6 +232,8 @@ void MainWindow::onRunButtonClicked()
         timer->stop();
         g_readingThread.request_stop();
         frontend_rpc_disconnect();
+        g_isReading = false;
+        g_isConnected = false;
 
         status("Measurement stopped.");
         ui->TurnBtn->setText("Run");

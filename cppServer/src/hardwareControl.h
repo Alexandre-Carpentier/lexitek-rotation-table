@@ -50,8 +50,8 @@ public:
 	virtual bool resetDaq() = 0;
 	virtual void acquires(double& voltage) = 0;
 	virtual bool setSpeed(double freqHz) = 0;
-	virtual bool doMove(bool isMoving) = 0;
-	virtual bool moveTo(int64_t clockCount) = 0;
+	virtual bool doMove(bool isMoving) = 0; // Turn when isMoving = true, Stop when isMoving = false
+	virtual bool moveTo(int64_t clockCount) = 0; // Move to a specific clock count (for future use)
 	virtual void doClockwizeDirection(bool isClockWise) = 0;
 	virtual bool checkDaq() = 0;
 	virtual ~hardware_interface() = default; // Mandatory for childrens
@@ -62,13 +62,13 @@ public:
 // Production code
 //
 
-class production_hardware : public hardware_interface
+class timeBased_hardware : public hardware_interface
 {
 public:
-	production_hardware()
+	timeBased_hardware()
 	{
 		std::lock_guard<std::mutex> lockInit(m_mutexAPI);
-		std::print("[*] Initialize production_hardware\n");
+		std::print("[*] Initialize timeBased_hardware\n");
 		std::print("[*] Connecting to DAQ\n");
 
 		DaqConfig config;
