@@ -22,8 +22,8 @@ service ReadAngleRPC
     rpc StopCommand(stop) returns (backend_response){}
     rpc CalibrateCommand(calibrate) returns (backend_response){}
     rpc HomeCommand(homing) returns (backend_response){}
-    rpc WriteCommand(write) returns (backend_response){}
-    rpc ReadCommand(read) returns (backend_response){}
+    rpc WriteCommand(WriteRequest) returns (backend_response){}
+    rpc ReadCommand(ReadRequest) returns (backend_response){}
 }
 
 message run
@@ -51,14 +51,14 @@ message homing
     uint64 timestamp_ms = 2;
 }
 
-message write
+message WriteRequest
 {
     string source = 1;
     double angle = 2;
     uint64 timestamp_ms = 3;
 }
 
-message read
+message ReadRequest
 {
     string source = 1;
     uint64 timestamp_ms = 2;
