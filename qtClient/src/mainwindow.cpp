@@ -157,36 +157,27 @@ void checkConnectionThread()
 void MainWindow::onRunButtonClicked()
 {
     std::string reply;
-    g_isReading = !g_isReading;
-    if (!g_isConnected)
+    g_isConnected = !g_isConnected;
+
+    if (g_isConnected)
     {
         if (frontend_rpc_connect() != 0)
         {
+            status("[!] gRPC client failed to connect.");
 			g_isReading = false;
 			g_isConnected = false;
 			return;
-
 		}
-            g_isConnected = true;
-    }
 
+        if (frontend_rpc_status() != 0)
+        {
+            status("[!] gRPC client not connected.");
+            g_isReading = false;
+            g_isConnected = false;
+            return;
+        }
 
-/*    if (frontend_rpc_status() != 0)
-    {
-        status("gRPC client not connected.");
-        g_isReading = false;
-        g_isConnected = false;
-        return;
-    }*/
-/*    else
-    {
-        
-    }*/
-
-    
-    if(g_isReading)
-    {
-        // Unlock controls
+          // Unlock controls
         lock_controls(false);
 
 		// Start reading
@@ -231,7 +222,7 @@ void MainWindow::onRunButtonClicked()
 
         timer->stop();
         g_readingThread.request_stop();
-        frontend_rpc_disconnect();
+        //frontend_rpc_disconnect();
         g_isReading = false;
         g_isConnected = false;
 
