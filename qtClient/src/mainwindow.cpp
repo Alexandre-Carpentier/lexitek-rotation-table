@@ -134,7 +134,7 @@ void MainWindow::onMinusButtonClicked()
     return;
 }
 
-void checkConnectionThread()
+void checkConnectionThread(MainWindow* obj)
 {
 	std::stop_token st = g_readingThread.get_stop_token();
 	while (!st.stop_requested())
@@ -145,10 +145,25 @@ void checkConnectionThread()
 			{
 				std::print("[Frontend] gRPC client connection failed\n");
 				g_isConnected = false;
+                //obj->lock_controls(true);
+                //obj->status("Measurement stopped.");
+                //obj->ui->TurnBtn->setText("Run");
+
+                QMetaObject::invokeMethod(
+                    obj,
+                    [obj]()
+                    {
+                        // Exécuté dans le thread principal
+                        obj->lock_controls(true);
+                        obj->status("Measurement stopped.");
+                        obj->ui->TurnBtn->setText("Run");
+                    },
+                    Qt::QueuedConnection
+                );
+
                 g_readingThread.request_stop();
 
 			}
-				g_isConnected = true;
 		}
 		std::this_thread::sleep_for(std::chrono::seconds(5));
 	}
@@ -208,7 +223,7 @@ void MainWindow::onRunButtonClicked()
         ui->TargetAngleEdit->setText(QString::fromStdString(reply));
         ui->CurrentAngleEdit->setText(QString::fromStdString(reply));
 
-        g_readingThread = std::jthread(checkConnectionThread);
+        g_readingThread = std::jthread(checkConnectionThread, this);
 
         // Update every delay
         timer->start(500); 
@@ -297,6 +312,14 @@ void MainWindow::onTimerTimeout()
     //std::print("\n[Frontend] Tick!\n" );
     status("Tick.");
     std::string reply;
+
+    if (!g_isConnected)
+    {
+        timer->stop();
+        std::print("[*] Timer stopped. Connection lost.\n");
+        return;
+    }
+
     if(frontend_rpc_send_command("READ", reply) != 0x0)
     {
         std::print("[Frontend] Error reading angle\n");

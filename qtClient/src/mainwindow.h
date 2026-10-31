@@ -25,6 +25,7 @@ public:
     ~MainWindow();
 
 private:
+    friend void checkConnectionThread(MainWindow* obj);
     void lock_controls(bool lock);
     void status(std::string);
 

@@ -18,7 +18,7 @@
 
 int main(int argc, char **argv)
 {
-    argc = 2;
+    //argc = 2;
 
     if (argc > 1)
     {

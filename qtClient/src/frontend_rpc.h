@@ -43,7 +43,7 @@ int frontend_rpc_connect()
 {
     // Timeout
     auto deadline = std::chrono::system_clock::now()
-        + std::chrono::seconds(2);
+        + std::chrono::seconds(1);
 
     if (!g_channel->WaitForConnected(deadline))
     {
@@ -91,7 +91,8 @@ int frontend_rpc_send_command(const std::string& command, std::string& response)
     }
     else
     {
-        std::print("[Frontend] Erreur gRPC: {}\n", status.error_message());
+        std::print("[Frontend] gRPC error: {}\n", status.error_message());
+        std::print("[last command]: {}\n", request.command());
         //QMessageBox::warning(nullptr, "gRPC Error",
         //    QString::fromStdString(status.error_message()));
     }
