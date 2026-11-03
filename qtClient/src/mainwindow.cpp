@@ -226,9 +226,12 @@ void MainWindow::onRunButtonClicked()
         g_readingThread = std::jthread(checkConnectionThread, this);
 
         // Update every delay
-        timer->start(500); 
+        timer->start(5000); 
 
         ui->TurnBtn->setText("Stop");
+
+        g_isReading = true;
+        g_isConnected = true;
     }
     else
     {
@@ -238,11 +241,13 @@ void MainWindow::onRunButtonClicked()
         timer->stop();
         g_readingThread.request_stop();
         //frontend_rpc_disconnect();
-        g_isReading = false;
-        g_isConnected = false;
+
 
         status("Measurement stopped.");
         ui->TurnBtn->setText("Run");
+
+        g_isReading = false;
+        g_isConnected = false;
     }
     return;
 }

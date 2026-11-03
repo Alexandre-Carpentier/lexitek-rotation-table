@@ -28,13 +28,22 @@
 // OPAQUE implementation of the lexitek class external dependencies
 // instanciate real dependencies here
 
-struct lexitek::dependenciesimpl
+/*struct lexitek::dependenciesimpl
 {
-	timeBased_hardware hardware; // Real hardware for prod
-	production_timer    timer1;
-	production_timer    timer2;
+	timeBased_hardware hardware;
+	timeCounter    counter1;
+	timeCounter    counter2;
 	production_file     file;
 	production_automation script;
+};*/
+
+struct lexitek::dependenciesimpl
+{
+	hardware_interface& hardware;
+	counter_interface& counter1;
+	counter_interface& counter2;
+	file_interface& file;
+	automation_interface& script;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -56,14 +65,66 @@ public:
 
 	// Opaque ptr logic for time based positionning
 	class rotationTimeBasedImpl;
-	//std::unique_ptr<rotationTimeBasedImpl> timeImpl;
 
 	// Opaque ptr logic for clock based positionning
 	class rotationClockBasedImpl;
-	//std::unique_ptr<rotationClockBasedImpl> clockImpl;
 };
 
 lexitek::rotationImpl::~rotationImpl() = default;
+
+/////////////////////////////////////////////////////////////////////////////
+// 
+// Custom print function for debugging.
+//
+
+//#define __VERBOSE // Uncomment to print detailed states in the console for debugging (can reduce performance as std::print is slow)
+namespace dbg
+{
+	template<typename... Args>
+	void print(std::format_string<Args...> fmt, Args&&... args)
+	{
+#ifdef __VERBOSE
+		std::print(fmt, std::forward<Args>(args)...);
+#endif
+	}
+}
+
+///////////////////////////////////////////////////////////////////////////////////////
+//
+// State of the rotation table
+//
+
+enum class STATE {
+	RUNNING = 0,
+	HOMING,
+	CALIBRATING,
+	STOPPED
+};
+
+///////////////////////////////////////////////////////////////////////////////////////
+//
+// Rotation table data
+//
+
+struct ROTATIONSTRUCT {
+	angle_t currentAngle;
+	angle_t targetAngle;
+	double directionSign;
+	angle_t initialAngle;
+	angle_t remainingAngle;
+	angle_t oppositeAngle;
+	angle_t destinationDistance;
+	velocity_t velocityDegPerSec;
+	volt_t homeVoltage;
+	double duration;
+	bool isComputingPositionRequested;
+	bool isMoving;
+	bool isTargetUpdated;
+	bool isAtTarget;
+	bool isHome;
+	bool isCalibrationRequested;
+	bool isCalibrated;
+};
 
 /////////////////////////////////////////////////////////////////////////////
 // 
@@ -79,7 +140,40 @@ lexitek::rotationImpl::~rotationImpl() = default;
 // refer to pimpl idiom
 
 lexitek::lexitek(positionnning_mode mode)
-	: implDeps(std::make_unique<dependenciesimpl>())
+{
+	// Factory for dependencies
+	// Configure the production code here
+	switch (mode)
+	{
+
+	case positionnning_mode::TIME_BASED:
+	{
+		timeBased_hardware hw;
+		timeCounter t1, t2;
+		production_file f;
+		production_automation script;
+
+		impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
+			hw, t1, t2, f, script);
+		break;
+	}
+	case positionnning_mode::CLOCK_BASED:
+	{
+		timeBased_hardware hw;
+		clockCounter t1, t2;
+		production_file f;
+		production_automation script;
+
+		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
+			hw, t1, t2, f, script);
+		break;
+	}
+	}
+
+	std::print("[*] driver_r208 loading (production)\n");
+}
+
+lexitek::lexitek(positionnning_mode mode, dependencies deps)
 {
 	// Factory
 	switch (mode)
@@ -88,26 +182,17 @@ lexitek::lexitek(positionnning_mode mode)
 	case positionnning_mode::TIME_BASED:
 	{
 		impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
-			implDeps->hardware, implDeps->timer1, implDeps->timer2, implDeps->file, implDeps->script);
+			deps.hardware, deps.counter1, deps.counter2, deps.file, deps.script);
 		break;
 	}
 	case positionnning_mode::CLOCK_BASED:
 	{
-/*		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
-			implDeps->hardware, implDeps->timer1, implDeps->timer2, implDeps->file, implDeps->script);*/
+		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
+			deps.hardware, deps.counter1, deps.counter2, deps.file, deps.script);
 		break;
 	}
 
 	}
-
-
-	std::print("[*] driver_r208 loading (production)\n");
-}
-
-lexitek::lexitek(positionnning_mode mode, dependencies deps)
-	: impl(std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
-		deps.hardware, deps.timer1, deps.timer2, deps.file, deps.script))
-{
 	std::print("[*] lexitek loading (injected)\n");
 }
 

@@ -19,7 +19,7 @@ TEST(test_components, timer_tests)
 	std::print("[*] Test the timer class\n\n");
 
 	// Test the timer interface
-	production_timer timer;
+	timeCounter timer;
 
 	std::print("[*] Sleep 500ms\n");
 	timer.start();
@@ -27,9 +27,9 @@ TEST(test_components, timer_tests)
 	timer.stop();
 
 	// Measurement must be between 0.4 and 0.6 seconds as sleep is 500ms
-	std::cout << "Elapsed time: " << timer.elapsed_seconds() << " seconds" << std::endl;
-	EXPECT_LT(timer.elapsed_seconds(), 0.55);
-	EXPECT_GT(timer.elapsed_seconds(), 0.45);
+	std::cout << "Elapsed time: " << timer.get() << " seconds" << std::endl;
+	EXPECT_LT(timer.get(), 0.55);
+	EXPECT_GT(timer.get(), 0.45);
 
 	std::print("[*] Sleep 1000ms\n");
 	timer.reset();
@@ -38,9 +38,9 @@ TEST(test_components, timer_tests)
 	std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 	timer.stop();
 
-	std::cout << "Elapsed time: " << timer.elapsed_seconds() << " seconds" << std::endl;
-	EXPECT_LT(timer.elapsed_seconds(), 1.05);
-	EXPECT_GT(timer.elapsed_seconds(), 0.95);
+	std::cout << "Elapsed time: " << timer.get() << " seconds" << std::endl;
+	EXPECT_LT(timer.get(), 1.05);
+	EXPECT_GT(timer.get(), 0.95);
 }
 
 #include "../../cppServer/src/fileControl.h"
@@ -167,7 +167,7 @@ TEST(TypeSafetyTest, angle_assignment_operator) {
 }
 TEST(test_system, rotation_test) {
 	mock_hardware hw;
-	production_timer t1, t2;
+	timeCounter t1, t2;
 	production_file f;
 	production_automation script;
 	lexitek rotation{ positionnning_mode::TIME_BASED, lexitek::dependencies{ hw, t1, t2, f, script } };

@@ -18,23 +18,6 @@ static std::string calFilename = "cal.txt"; // Calibration file name
 
 /////////////////////////////////////////////////////////////////////////////
 // 
-// Custom print function for debugging.
-//
-
-//#define __VERBOSE // Uncomment to print detailed states in the console for debugging (can reduce performance as std::print is slow)
-namespace dbg
-{
-	template<typename... Args>
-	void print(std::format_string<Args...> fmt, Args&&... args)
-	{
-#ifdef __VERBOSE
-		std::print(fmt, std::forward<Args>(args)...);
-#endif
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////////
-// 
 // Dependencies (components) of the project
 //
 
@@ -49,43 +32,6 @@ void computeVelocity(double& velocity, double elapsedSeconds);
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
-// State of the rotation table
-//
-
-enum class STATE {
-	RUNNING = 0,
-	HOMING,
-	CALIBRATING,
-	STOPPED
-};
-
-///////////////////////////////////////////////////////////////////////////////////////
-//
-// Rotation table data
-//
-
-struct ROTATIONSTRUCT {
-	angle_t currentAngle;
-	angle_t targetAngle;
-	double directionSign;
-	angle_t initialAngle;
-	angle_t remainingAngle;
-	angle_t oppositeAngle;
-	angle_t destinationDistance;
-	velocity_t velocityDegPerSec;
-	volt_t homeVoltage;
-	double duration;
-	bool isComputingPositionRequested;
-	bool isMoving;
-	bool isTargetUpdated;
-	bool isAtTarget;
-	bool isHome;
-	bool isCalibrationRequested;
-	bool isCalibrated;
-};
-
-///////////////////////////////////////////////////////////////////////////////////////
-//
 // OPAQUE implementation for time based positionning
 //
 
@@ -93,7 +39,7 @@ class lexitek::rotationImpl::rotationTimeBasedImpl final : public lexitek::rotat
 {
 public:
 	// Inject all dependencies in the constructor. Caller can choose to pass production or mock dependencies for testing.
-	explicit rotationTimeBasedImpl(lexitek& parent, hardware_interface& hw, timer_interface& t1, timer_interface& t2, file_interface& f, automation_interface& script)
+	explicit rotationTimeBasedImpl(lexitek& parent, hardware_interface& hw, counter_interface& t1, counter_interface& t2, file_interface& f, automation_interface& script)
 		: m_parent(parent), m_hardware(hw), m_timer_move(t1), m_timer_cal(t2), m_file(f), m_script(script)
 	{
 		std::lock_guard<std::mutex> lockApi(m_mutexApi);
@@ -173,7 +119,7 @@ public:
 		return true;
 	}
 
-	// [[Deprecated]]Blocking calls occurs than can timeout
+	// [[Deprecated]] Blocking calls occurs than can timeout
 	// Read current position
 	bool readAngle(angle_t& angle) override
 	{
@@ -308,7 +254,7 @@ private:
 			}
 
 			m_timer_move.tick();
-			m_rotationData.duration = m_timer_move.elapsed_seconds();
+			m_rotationData.duration = m_timer_move.get();
 
 			// Clockwise rotation
 			if (m_rotationData.directionSign >= 0)
@@ -372,10 +318,10 @@ private:
 		//dbg::print(CGREEN"[*] Current duration (sec): {:.1f}\n", m_rotationData.duration); dbg::print(CRESET);
 
 		// Dispose of the latest angle position
-		m_cachedAngle.store(
-			m_rotationData.currentAngle.get(),
-			std::memory_order_relaxed
-		);
+		//m_cachedAngle.store(
+		//	m_rotationData.currentAngle.get(),
+		//	std::memory_order_relaxed
+		//);
 	}
 
 	void onStop()
@@ -536,7 +482,7 @@ private:
 						m_hardware.doMove(false);
 						m_timer_cal.stop();
 
-						double elapsedTimeSec = m_timer_cal.elapsed_seconds();
+						double elapsedTimeSec = m_timer_cal.get();
 
 						assert(elapsedTimeSec > 0.0);
 
@@ -708,8 +654,8 @@ private:
 	// This is external dependencies
 	lexitek& m_parent;
 	hardware_interface& m_hardware;
-	timer_interface& m_timer_cal;
-	timer_interface& m_timer_move;
+	counter_interface& m_timer_cal;
+	counter_interface& m_timer_move;
 	file_interface& m_file;
 	automation_interface& m_script;
 
@@ -719,7 +665,7 @@ private:
 	std::jthread m_serverThread;
 	STATE m_state = STATE::STOPPED;
 	ROTATIONSTRUCT m_rotationData{};
-	std::atomic<double> m_cachedAngle{ 0.0 }; // Used for instantaneous reading from grpc
+	//std::atomic<double> m_cachedAngle{ 0.0 }; // Used for instantaneous reading from grpc
 	frequency_t m_freqHz;
 
 	std::mutex m_mutexApi;

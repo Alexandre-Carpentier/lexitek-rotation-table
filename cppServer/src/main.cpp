@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     }
 
     std::print("[*] Launching rotation table.\n");
-    lexitek operateRotationSoftware(positionnning_mode::TIME_BASED);
+    lexitek operateRotationSoftware(positionnning_mode::CLOCK_BASED);
 
     while(getchar() != EOF)
     {

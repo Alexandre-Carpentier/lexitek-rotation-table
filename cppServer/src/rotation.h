@@ -121,7 +121,7 @@ private:
 
 // Forward dependencies declarations
 struct hardware_interface;
-struct timer_interface;
+struct counter_interface;
 struct file_interface;
 struct automation_interface;
 
@@ -137,8 +137,8 @@ public:
 	// Caller can choose to pass production or mock dependencies for testing if needed.
 	struct dependencies {
 		hardware_interface& hardware;
-		timer_interface& timer1;
-		timer_interface& timer2;
+		counter_interface& counter1;
+		counter_interface& counter2;
 		file_interface& file;
 		automation_interface& script;
 	};
