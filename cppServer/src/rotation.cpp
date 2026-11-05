@@ -115,8 +115,10 @@ struct ROTATIONSTRUCT {
 	angle_t oppositeAngle;
 	angle_t destinationDistance;
 	velocity_t velocityDegPerSec;
+	velocity_t velocityDegPerClk;
 	volt_t homeVoltage;
 	double duration;
+	uint64_t counterValue;
 	bool isComputingPositionRequested;
 	bool isMoving;
 	bool isTargetUpdated;
@@ -148,10 +150,10 @@ lexitek::lexitek(positionnning_mode mode)
 
 	case positionnning_mode::TIME_BASED:
 	{
-		timeBased_hardware hw;
-		timeCounter t1, t2;
-		production_file f;
-		production_automation script;
+		static timeBased_hardware hw;
+		static timeCounter t1, t2;
+		static production_file f;
+		static production_automation script;
 
 		impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
 			hw, t1, t2, f, script);
@@ -159,10 +161,10 @@ lexitek::lexitek(positionnning_mode mode)
 	}
 	case positionnning_mode::CLOCK_BASED:
 	{
-		timeBased_hardware hw;
-		clockCounter t1, t2;
-		production_file f;
-		production_automation script;
+		static clockBased_hardware hw;
+		static clockCounter t1, t2;
+		static production_file f;
+		static production_automation script;
 
 		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
 			hw, t1, t2, f, script);

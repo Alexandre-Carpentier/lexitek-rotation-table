@@ -11,6 +11,9 @@
         "CMAKE_C_COMPILER": "cl.exe",
         "CMAKE_CXX_COMPILER": "cl.exe"
       },
+      "environment": {
+        "VSLANG": "1033"
+      },
       "condition": {
         "type": "equals",
         "lhs": "${hostSystemName}",

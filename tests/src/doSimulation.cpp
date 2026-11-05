@@ -31,7 +31,7 @@ int main()
 
     std::print("[*] Injecting test mock\n");
     mock_hardware hw;
-    production_timer t1, t2;
+    timeCounter t1, t2;
     production_file f;
     production_automation script;
     lexitek rotation{ positionnning_mode::TIME_BASED,lexitek::dependencies{ hw, t1, t2, f, script } };
