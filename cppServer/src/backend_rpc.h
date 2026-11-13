@@ -214,10 +214,8 @@ private:
 // Initialize and start the gRPC server to listen for frontend messages
 // 
 //
-uint8_t backend_rpc_init(lexitek &table, std::stop_token stopToken)
+int backend_rpc_init(lexitek &table)
 {
-	if (stopToken.stop_requested()) return 0x0;
-
 	std::string server_address("0.0.0.0:50051");
 	ReadAngleImpl service(table);
 
@@ -234,16 +232,12 @@ uint8_t backend_rpc_init(lexitek &table, std::stop_token stopToken)
 
 	std::print("[Backend] gRPC server started on {}\n", server_address);
 
-	// Si stop_requested() est déjà vrai à la construction → Shutdown() appelé immédiatement
-	std::stop_callback stopCb(stopToken, [&]() {
-		g_backend_grpc_server->Shutdown();
-	});
 
 	g_backend_grpc_server->Wait(); // Bloque jusqu'à Shutdown()
 
 	g_backend_grpc_server.reset();
 	std::print("[Backend] gRPC server stopped\n");
-	return 0x0;
+	return 0;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////

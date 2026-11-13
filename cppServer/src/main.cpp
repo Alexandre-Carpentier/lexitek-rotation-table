@@ -5,8 +5,8 @@
 // Copyright:   (c) Alexandre CARPENTIER
 // Licence:     LGPL-2.1-or-later
 /////////////////////////////////////////////////////////////////////////////
-#include "backend_rpc.h"
 #include "rotation.h"
+#include "gRpc.h"
 #include <print>
 
 #ifdef _WIN32
@@ -30,11 +30,11 @@ int main(int argc, char **argv)
     }
 
     std::print("[*] Launching rotation table.\n");
-    lexitek operateRotationSoftware(positionnning_mode::CLOCK_BASED);
+    lexitek controler(positionnning_mode::CLOCK_BASED);
 
     std::print("[*] Starting server thread\n");
-    std::jthread m_serverThread = std::jthread([&](std::stop_token st) {
-        backend_rpc_init(operateRotationSoftware, st);
+    std::jthread m_serverThread = std::jthread([&]() {
+        backend_rpc_init(controler);
         });
     assert(m_serverThread.joinable());// Ensure the server thread is running correctly
 
