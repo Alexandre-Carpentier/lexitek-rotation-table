@@ -88,7 +88,7 @@ void MainWindow::registersignals(Ui::MainWindow* ui)
     connect(ui->TurnBtn, &QPushButton::clicked, this, &MainWindow::onRunButtonClicked);
     connect(ui->CalBtn, &QPushButton::clicked, this, &MainWindow::onCalibrateButtonClicked);
     connect(ui->homeBtn, &QPushButton::clicked, this, &MainWindow::onHomeButtonClicked);
-    connect(ui->TargetAngleEdit, &QLineEdit::editingFinished, this, &MainWindow::onTargetEditChanged);   
+    connect(ui->TargetAngleEdit, &QLineEdit::returnPressed, this, &MainWindow::onTargetEditChanged);
 
     connect(ui->dial, &QDial::valueChanged, this, [this, ui](int value) {
         ui->TargetAngleEdit->setText(QString::number(value, 'f', 1));
@@ -145,10 +145,8 @@ void checkConnectionThread(MainWindow* obj)
 			{
 				std::print("[Frontend] gRPC client connection failed\n");
 				g_isConnected = false;
-                //obj->lock_controls(true);
-                //obj->status("Measurement stopped.");
-                //obj->ui->TurnBtn->setText("Run");
 
+				// Mandatory to use invokeMethod to update the UI from a different thread
                 QMetaObject::invokeMethod(
                     obj,
                     [obj]()

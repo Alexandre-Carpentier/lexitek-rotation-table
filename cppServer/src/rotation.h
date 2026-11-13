@@ -8,7 +8,7 @@
 #pragma	once
 #include <cmath>
 #include <memory>
-//#include <string>
+#include <algorithm>
 #include <expected>
 
 /////////////////////////////////////////////////////////////////////////////
@@ -46,15 +46,15 @@ struct angle_t
 	constexpr angle_t() = default;
 
 	template<typename T> requires std::same_as<T, double>
-	explicit angle_t(T value) : m_value(std::fmod(std::fmod(value, 360.0) + 360.0, 360.0)) {}
+	explicit angle_t(T value) : m_value(std::clamp(std::fmod(std::fmod(value, 360.0) + 360.0, 360.0), 0.0, 360.0)) {}
 
 	angle_t& operator= (double value)
 	{
-		m_value = std::fmod(std::fmod(value, 360.0) + 360.0, 360.0);
+		m_value = std::clamp(std::fmod(std::fmod(value, 360.0) + 360.0, 360.0), 0.0, 360.0);
 		return *this;
 	}
 
-	[[nodiscard]] constexpr double get() const { return m_value; }
+	[[nodiscard]] constexpr double get() const { return std::clamp(m_value, 0.0, 360.0); }
 private:
 	double m_value{};
 };
@@ -116,6 +116,34 @@ private:
 
 /////////////////////////////////////////////////////////////////////////////
 // 
+// define: Velocity in deg/clock
+//
+
+struct clkPerDeg_t
+{
+	constexpr clkPerDeg_t() = default;
+
+	template<typename T> requires std::same_as<T, double>
+	explicit constexpr clkPerDeg_t(T value) : m_value(value) {
+		if (m_value < m_minVelocity)m_value = m_minVelocity; if (m_value >= m_maxVelocity)m_value = m_maxVelocity;
+	}
+
+	constexpr clkPerDeg_t& operator= (double value)
+	{
+		// Sanity check for velocity
+		if (value < m_minVelocity)value = m_minVelocity; if (value >= m_maxVelocity)value = m_maxVelocity;
+		m_value = value; return *this;
+	}
+
+	[[nodiscard]] constexpr double get() const { return m_value; }
+private:
+	double m_value{};
+	static constexpr double m_maxVelocity = 100000.0; // Max voltage in volt
+	static constexpr double m_minVelocity = -100000.0; // Min voltage in volt
+};
+
+/////////////////////////////////////////////////////////////////////////////
+// 
 // Rotation main class:
 // 
 
@@ -155,12 +183,8 @@ public:
 	bool setAngle(angle_t angle); // (4) Go to a position
 
 private:
-	// Opaque ptr logic for time based positionning
+	// Opaque ptr logic 
 	class rotationImpl;
 	std::unique_ptr<rotationImpl> impl;
-
-	// Opaque ptr dependencies
-	struct dependenciesimpl;
-	std::unique_ptr<dependenciesimpl> implDeps;
 };
 

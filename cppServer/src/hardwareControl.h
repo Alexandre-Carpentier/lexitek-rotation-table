@@ -81,7 +81,7 @@ public:
 			.setAnalogInputPins(analog_input_pins{ HOME_PIN }) // To read home position
 			.setAnalogContinuous(analog_pins_continuous{ CLOCK_PIN }) // To make a PWM signal
 			.setDigitalPins(digital_pins{ MOVE_PIN, DIR_PIN }); // To control the direction and the movement
-
+		
 		m_daq = std::make_unique<cppDaq>(config);
 		assert(m_daq); // Ensure DAQ is initialized correctly
 	}
@@ -293,44 +293,24 @@ public:
 	virtual bool doMove(bool isMoving) override
 	{
 		std::lock_guard<std::mutex> lockInit(m_mutexAPI);
-/*		static bool s_state = false;
-		if (isMoving != s_state) // Only update if s_state changed	
+		static bool s_state = false;
+		if (isMoving)
 		{
-			s_state = isMoving; // Save state
+			m_daq->WriteAnalogPin(SW_CLOCK_PIN, 3.3); // PWM HIGH
+			std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>(1e6 / m_freqHz))); // Wait for the duration of one clock cycle
+			m_daq->WriteAnalogPin(SW_CLOCK_PIN, 0.0); // PWM LOW
+			std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>(1e6 / m_freqHz))); // Wait for the duration of one clock cycle
 
-			//Act
-			if (isMoving)
-			{
-				std::print(CMAGENTA"[*]doMove(true) called\n"); std::print(CRESET);
-				//m_daq->WriteDigitalPin(MOVE_PIN, digital_state::LOW); // Enable			
-				return m_daq->StartAnalogPWM(SW_CLOCK_PIN, Frequency_hz<double>(m_freqHz));
-			}
-			std::print(CMAGENTA"[*]doMove(false) called\n"); std::print(CRESET);
-			//m_daq->WriteDigitalPin(MOVE_PIN, digital_state::HIGH); // Disable
-			return m_daq->StopAnalogPWM(SW_CLOCK_PIN);
+			s_state = false; // Save state
 		}
-		return true;
-*/
-
-			static bool s_state = false;
-			if (isMoving)
+		else
+		{	
+			if (isMoving == s_state) // Only update if s_state changed
 			{
-				m_daq->WriteAnalogPin(SW_CLOCK_PIN, 3.3); // PWM HIGH
-				std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>(1e6 / m_freqHz))); // Wait for the duration of one clock cycle
+				s_state = true; // Save state
 				m_daq->WriteAnalogPin(SW_CLOCK_PIN, 0.0); // PWM LOW
-				std::this_thread::sleep_for(std::chrono::microseconds(static_cast<int>(1e6 / m_freqHz))); // Wait for the duration of one clock cycle
-				s_state = false; // Save state
 			}
-			else
-			{	
-				if (isMoving == s_state) // Only update if s_state changed
-				{
-					s_state = true; // Save state
-					m_daq->WriteAnalogPin(SW_CLOCK_PIN, 0.0); // PWM LOW
-				}
-			}
-
-
+		}
 		return true;
 
 	}

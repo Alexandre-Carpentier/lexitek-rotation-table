@@ -22,7 +22,7 @@ int main(int argc, char *argv[])
 	// First start the remote backend process (server)
     //
 
-//#define _BACKEND_EXEC
+#define _BACKEND_EXEC
 #ifdef _BACKEND_EXEC
     std::print("[*] Backend Starting...\n");
     bool isServerRunning = Execute("cppServer");

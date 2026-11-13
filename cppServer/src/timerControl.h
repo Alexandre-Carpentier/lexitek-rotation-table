@@ -42,7 +42,6 @@ public:
     }
 
     void reset() override {
-        std::print(CCYAN"[*] Counter reset\n"); std::print(CRESET);
         m_start = std::chrono::steady_clock::now();
         m_end = m_start;
         m_running = false;
@@ -83,7 +82,6 @@ public:
 
     void reset() override {
         std::lock_guard<std::mutex> lock(m_mutex);
-        std::print(CCYAN"[*] Counter reset\n"); std::print(CRESET);
         m_clock = 0;
         m_running = false;
     }

@@ -256,15 +256,21 @@ private:
 			if (m_rotationData.directionSign >= 0)
 			{
 				std::lock_guard<std::mutex> lockApi(m_mutexApi);
-				// d = vt + d0
-				m_rotationData.currentAngle = (m_rotationData.counterValue * m_rotationData.velocityDegPerClk.get()) + m_rotationData.initialAngle.get();
+				m_rotationData.currentAngle = ((m_rotationData.counterValue * 360.0) / m_rotationData.velocityClkPerTurn.get()) + m_rotationData.initialAngle.get();
+
 			}
 			// Anti-clockwise rotation
 			if (m_rotationData.directionSign < 0)
 			{
 				std::lock_guard<std::mutex> lockApi(m_mutexApi);
-				// d = d0 - vt 
-				m_rotationData.currentAngle = m_rotationData.initialAngle.get() - (m_rotationData.counterValue * m_rotationData.velocityDegPerClk.get());
+				m_rotationData.currentAngle = m_rotationData.initialAngle.get() - ((m_rotationData.counterValue * 360.0) / m_rotationData.velocityClkPerTurn.get());
+			}
+
+			// Sanitize
+			if(std::isnan(m_rotationData.currentAngle.get()))
+			{
+				std::print("[*] Warning: currentAngle is NaN, resetting to 0.0\n");
+				m_rotationData.currentAngle = 0.0;
 			}
 		}
 		else
@@ -290,7 +296,7 @@ private:
 			double diff = std::fmod(std::abs(m_rotationData.targetAngle.get() - m_rotationData.currentAngle.get()), 360.0);
 			if (diff > 180.0) diff = 360.0 - diff;
 			std::lock_guard<std::mutex> lockApi(m_mutexApi);
-			m_rotationData.isAtTarget = (diff <= g_accuracy);
+			m_rotationData.isAtTarget = static_cast<bool>(diff <= g_accuracy);
 		}
 	}
 
@@ -327,6 +333,7 @@ private:
 					s_clockDirectionLock = true;
 					s_anticlockDirectionLock = false;
 					m_hardware.doClockwizeDirection(true);
+					m_counter_move.reset(); // Reset counter 
 					dbg::print(CYELLOW"[*] Rotating clockwise\n"); std::print(CRESET);
 				}
 			}
@@ -338,6 +345,7 @@ private:
 					s_clockDirectionLock = false;
 					s_anticlockDirectionLock = true;
 					m_hardware.doClockwizeDirection(false);
+					m_counter_move.reset(); // Reset counter
 					dbg::print(CYELLOW"[*] Rotating counter-clockwise\n"); std::print(CRESET);
 				}
 			}
@@ -346,10 +354,11 @@ private:
 			// Move when actual angle != target angle
 			if (!m_rotationData.isAtTarget)
 			{
+				std::print("[*] Counter is: \"{}\".\n", m_counter_move.get());
 				// Go to target
 				m_rotationData.isComputingPositionRequested = true;
 				m_hardware.doMove(true);
-				m_counter_move.tick(); // Start counting clock generated each time
+				m_counter_move.tick(); // Start counting clock generated each time			
 			}
 			else
 			{
@@ -396,10 +405,36 @@ private:
 		if (m_state == STATE::CALIBRATING)
 		{
 			// TODO: handle timeout
-			static bool s_init = false;
-			static bool s_step0 = false;
-			static bool s_step1 = true;
-			static bool s_step2 = true;
+
+			static bool s_init;
+			static bool s_home;
+			static bool s_outHome;
+			static bool s_inc;
+			static bool s_calc;
+
+			// Define step order if already at home
+			static bool s_runonce = false;
+			if (s_runonce == false)
+			{
+				if (m_rotationData.isHome == true)
+				{
+					s_init = false;
+					s_home = true; //skip
+					s_outHome = false; //begin
+					s_inc = true;
+					s_calc = true;
+				}
+				else
+				{
+					s_init = false;
+					s_home = false;//begin
+					s_outHome = true;
+					s_inc = true;
+					s_calc = true;
+				
+				}
+				s_runonce = true;
+			}
 
 			// init runonce
 			if (s_init == false)
@@ -409,7 +444,7 @@ private:
 			}
 
 			// Go to home position
-			if (s_step0 == false)
+			if (s_home == false)
 			{
 				std::print(CCYAN"[*] Goto home position\n"); std::print(CRESET);
 				{
@@ -423,13 +458,35 @@ private:
 				{
 					std::lock_guard<std::mutex> lockApi(m_mutexApi);
 					m_hardware.doMove(false);
-					s_step0 = true;
-					s_step1 = false; // next
+					s_home = true;
+					s_outHome = false; // next
+				}
+			}
+
+			// get out of home position
+			if (s_outHome == false)
+			{
+				if (m_rotationData.isHome == true)
+				{
+					std::lock_guard<std::mutex> lockApi(m_mutexApi);
+					m_hardware.doMove(true);
+				}
+				else
+				{
+					std::lock_guard<std::mutex> lockApi(m_mutexApi);
+					for (int i = 0; i < 10; ++i) // Move a bit to get out of home position
+					{
+						m_hardware.doMove(true);
+						std::this_thread::sleep_for(std::chrono::milliseconds(100));
+					}
+					m_hardware.doMove(false);
+					s_outHome = true;
+					s_inc = false; // next
 				}
 			}
 
 			// inc counter until one turn is reached
-			if (s_step1 == false)
+			if (s_inc == false)
 			{
 				std::print(CCYAN"[*] INC counter :\"{}\"\n", m_counter_cal.get()); std::print(CRESET);
 				{
@@ -443,23 +500,25 @@ private:
 				{
 					std::lock_guard<std::mutex> lockApi(m_mutexApi);
 					m_hardware.doMove(false);
-					s_step1 = true;
-					s_step2 = false; // next
+					s_inc = true;
+					s_calc = false; // next
 				}
 			}
 
 			// Calculate
 
-			if (s_step2 == false)
+			if (s_calc == false)
 			{
-				std::print(CGREEN"[*] Calibration done. Velocity computed: \"{}\" degrees per clk.\n[*]Reseting state\n", 
-					m_rotationData.velocityDegPerClk.get());
+ 			m_rotationData.velocityClkPerTurn = m_counter_cal.get();
+
+				std::print(CGREEN"[*] Calibration done. Velocity computed: \"{}\" clock per turns.\n", 
+					m_rotationData.velocityClkPerTurn.get());
 				std::print(CRESET);
 
 				// Save to disk
 				try
 				{
-					writeCal(std::abs(m_rotationData.velocityDegPerClk.get()));
+					writeCal(std::abs(m_rotationData.velocityClkPerTurn.get()));
 				}
 				catch (std::exception& e)
 				{
@@ -469,10 +528,12 @@ private:
 
 				// Reset state for next calibration
 				m_counter_cal.stop(); 
+				s_runonce = false;
 				s_init = false;
-				s_step0 = false;
-				s_step1 = true;
-				s_step2 = true;
+				s_home = false;
+				s_outHome = false;
+				s_inc = false;
+				s_calc = false;
 
 				// Flag current position = target = 0
 				m_rotationData.currentAngle = 0.0;
@@ -483,106 +544,17 @@ private:
 				m_rotationData.isCalibrated = true;
 				m_state = STATE::RUNNING;
 			}
-
-/*			else if (s_step1 == true)// Step 2: Make 2 turns with chronometer to calculate velocity
-			{
-				static size_t s_runonece = 0;
-				static size_t s_turns = 0;
-				if (!m_rotationData.isHome)
-				{
-					home = 0;
-				}
-
-				// Prepare timer once and start moving
-				if (s_runonece == 0)
-				{
-					std::print(CCYAN"[*] STEP2\n"); std::print(CRESET);
-					std::lock_guard<std::mutex> lockApi(m_mutexApi);
-					m_hardware.doMove(true);
-
-					///////////////////////////////////////////////////////////////////////////////////////
-					//
-					// TODO: refactor append here
-					//
-
-				XXXXXXXXXXXX
-					m_counter_cal.start();
-					++s_runonece;
-				}
-				else if (s_step2 == false)
-				{
-					// Turn counter. More is accurate.
-					const size_t turnsToDo = 1;
-
-					// Home reached counter
-
-					checkHomeRise(s_turns);
-					std::print(CYELLOW"[*] Turns: {}\r", s_turns); std::print(CRESET);
-					if (s_turns == turnsToDo)
-					{
-						std::lock_guard<std::mutex> lockApi(m_mutexApi);
-						m_hardware.doMove(false);
-
-						///////////////////////////////////////////////////////////////////////////////////////
-						//
-						// TODO: refactor append here
-						//
-
-					XXXXXXXXXXXXX
-						m_counter_cal.stop();
-
-						XXXXXXXXXXXXX
-						double elapsedTimeSec = m_counter_cal.elapsed_seconds();
-
-						assert(elapsedTimeSec > 0.0);
-
-						// Compute velocity
-						double val;
-						XXXXXXXXXXXXX
-						computeVelocity(val, elapsedTimeSec);
-
-						m_rotationData.velocityDegPerSec = val;
-
-						s_step2 = true;
-					}
-				}
-				else if (s_step2 == true)
-				{
-					std::print(CGREEN"[*] Calibration done. Velocity computed: {}\n[*]Reseting state\n", m_rotationData.velocityDegPerSec.get());
-					std::print(CRESET);
-
-					// Save to disk
-					try
-					{
-						writeCal(std::abs(m_rotationData.velocityDegPerSec.get()));
-					}
-					catch (std::exception& e)
-					{
-						std::print(CRED"[*] Error saving calibration data: {}\n", e.what());
-						std::print(CRESET);
-					}
-
-					s_runonece = 0;
-					s_turns = 0;
-					s_step0 = false;
-					s_step1 = false;
-					s_step2 = false;
-
-					// Flag current position = target = 0
-					m_rotationData.currentAngle = 0.0;
-					m_rotationData.targetAngle = 0.0;
-
-					// Flag calibrated
-					m_rotationData.isCalibrationRequested = false;
-					m_rotationData.isCalibrated = true;
-					m_state = STATE::RUNNING;
-				}
-			}*/
 		}
 	}
 
 	void poll(std::stop_token stopToken)
 	{
+		if (std::isnan(m_rotationData.velocityClkPerTurn.get()))
+		{
+			std::print(CRED"[*] Warning: velocityClkPerTurn is NaN, resetting to 20000\n"); std::print(CRESET);
+			m_rotationData.velocityClkPerTurn = 20000;
+		}
+
 		while (!stopToken.stop_requested())
 		{
 			// Check daq status
@@ -676,21 +648,37 @@ private:
 		// Read calibration data
 		std::lock_guard<std::mutex> lockHome(m_mutexHome);
 		m_rotationData.isCalibrated = false;
-		m_file.selectFile("clockCal.txt");
+		std::string clockCal = "clockCal.txt";
+		m_file.selectFile(clockCal);
 		std::string calData;
-		double calVelocity;
+		double calVelocity = 20000;
 		readCal(calData, calVelocity);
 
-		m_rotationData.velocityDegPerClk = NAN;
-		if (calVelocity > 0 and calVelocity < 60)
+		try
 		{
-			m_rotationData.velocityDegPerClk = calVelocity;
+			m_rotationData.velocityClkPerTurn = calVelocity;
+			m_rotationData.isCalibrated = true;
+
+			std::print(
+				CGREEN"[*] Calibration found at \"{}\". Velocity read: \"{}\" clk per turn.\n",
+				clockCal,
+				m_rotationData.velocityClkPerTurn.get()
+			);
+
+			std::print(CRESET);
+		}
+		catch(const std::exception & e)
+		{
+			m_rotationData.isCalibrated = false;
+
+			std::print(CRED"[*] Error reading calibration data: {}\n", e.what());
+			std::print(CRESET);
 		}
 
 		m_rotationData.directionSign = 1.0;
 
 		m_rotationData.currentAngle = 0.0;
-		m_rotationData.targetAngle = g_accuracy * 2;
+		m_rotationData.targetAngle = g_accuracy * 2; // To not oscillate
 		m_rotationData.initialAngle = 0.0;
 		m_rotationData.destinationDistance = 0.0;
 		m_rotationData.remainingAngle = 0.0;

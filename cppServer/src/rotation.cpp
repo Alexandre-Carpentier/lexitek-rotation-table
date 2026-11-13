@@ -6,7 +6,6 @@
 // Licence:     LGPL-2.1-or-later
 /////////////////////////////////////////////////////////////////////////////
 #include "rotation.h"
-
 #include <print>
 #include <memory>
 #include <string>
@@ -22,29 +21,6 @@
 #include "timerControl.h"
 #include "fileControl.h"
 #include "automationControl.h"
-
-///////////////////////////////////////////////////////////////////////////////////////
-//
-// OPAQUE implementation of the lexitek class external dependencies
-// instanciate real dependencies here
-
-/*struct lexitek::dependenciesimpl
-{
-	timeBased_hardware hardware;
-	timeCounter    counter1;
-	timeCounter    counter2;
-	production_file     file;
-	production_automation script;
-};*/
-
-struct lexitek::dependenciesimpl
-{
-	hardware_interface& hardware;
-	counter_interface& counter1;
-	counter_interface& counter2;
-	file_interface& file;
-	automation_interface& script;
-};
 
 ///////////////////////////////////////////////////////////////////////////////////////
 //
@@ -77,7 +53,9 @@ lexitek::rotationImpl::~rotationImpl() = default;
 // Custom print function for debugging.
 //
 
+// Example: dbg::print("Current angle: {}\n", currentAngle.get()); // Relace std::print with dbg::print
 //#define __VERBOSE // Uncomment to print detailed states in the console for debugging (can reduce performance as std::print is slow)
+
 namespace dbg
 {
 	template<typename... Args>
@@ -115,7 +93,7 @@ struct ROTATIONSTRUCT {
 	angle_t oppositeAngle;
 	angle_t destinationDistance;
 	velocity_t velocityDegPerSec;
-	velocity_t velocityDegPerClk;
+	clkPerDeg_t velocityClkPerTurn;
 	volt_t homeVoltage;
 	double duration;
 	uint64_t counterValue;
@@ -167,7 +145,9 @@ lexitek::lexitek(positionnning_mode mode)
 		static production_automation script;
 
 		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
-			hw, t1, t2, f, script);
+			hw, t1, t2, f, script
+		);
+
 		break;
 	}
 	}
