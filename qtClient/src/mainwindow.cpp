@@ -58,7 +58,7 @@ void MainWindow::lock_controls(bool lock)
 {
     if(lock)
     {
-        ui->TurnBtn->setStyleSheet("background-color: #ccfca3;");
+        ui->TurnBtn->setStyleSheet("background-color: #1B4332; color: white;");
         ui->FreqEdit->setEnabled(true);
 
         ui->TargetAngleEdit->setEnabled(false);

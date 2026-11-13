@@ -34,7 +34,7 @@ int main(int argc, char **argv)
 
     std::print("[*] Starting server thread\n");
     std::jthread m_serverThread = std::jthread([&]() {
-        backend_rpc_init(controler);
+		backend_rpc_init(controler);// Pass the controler to rpc server
         });
     assert(m_serverThread.joinable());// Ensure the server thread is running correctly
 
