@@ -16,8 +16,6 @@
 #include <grpcpp/grpcpp.h>
 #include "MSG_Position.grpc.pb.h"
 
-#include "rotation.h"
-
 namespace {
 std::unique_ptr<grpc::Server> g_backend_grpc_server;
 
@@ -48,6 +46,11 @@ public:
 		{
 			// Try convert
 			std::string freq_string = request->command().substr(4);
+			freq_string = freq_string.substr(0, freq_string.find('&')); // Extract frequency value before '&'
+
+			std::string mode_string = request->command().substr(4);
+			mode_string = mode_string.substr(mode_string.find('=') + 1); // Extract mode value after '='
+
 			double freq = -1.0;
 
 			try
@@ -63,10 +66,23 @@ public:
 				return grpc::Status::OK;
 			}
 
-			std::print("[Backend] Start running\n");
+			std::print("[Backend] Starting table\n");
+
+			positionnning_mode selectedMode = positionnning_mode::TIME_BASED; // Default mode
+			if (mode_string == "TIME_BASED")
+			{
+				selectedMode = positionnning_mode::TIME_BASED;
+				std::print("[Backend] Time based strategy\n");
+			}
+			else if (mode_string == "CLOCK_BASED")
+			{
+				selectedMode = positionnning_mode::CLOCK_BASED;
+				std::print("[Backend] Clock based strategy\n");
+			}
+
 			if (!m_table.start(frequency_t{ freq }))
 			{
-				std::print("[Backend] Failed to read angle\n");
+				std::print("[Backend] Failed to start table\n");
 				response->set_timestamp_ms(std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::system_clock::now().time_since_epoch()
 				).count());

@@ -56,10 +56,6 @@ public:
 			m_pollingThread.request_stop();
 		}
 
-		std::print("[*] Stopping backend RPC server\n");
-		if (m_serverThread.joinable()) {
-			m_serverThread.request_stop();
-		}
 		std::print("[*] Delete done\n");
 	};
 
@@ -155,12 +151,6 @@ private:
 		std::print("[*] Running rotationClockBasedImpl\n");
 
 		resetData();
-
-		std::print("[*] Starting server thread\n");
-		m_serverThread = std::jthread([this](std::stop_token st) {
-			backend_rpc_init(m_parent, st);
-			});
-		assert(m_serverThread.joinable());// Ensure the server thread is running correctly
 
 		std::print("[*] Start the polling thread\n");
 		m_pollingThread = std::jthread([this](std::stop_token st) {
@@ -701,7 +691,7 @@ private:
 	// datas
 	size_t home;
 	std::jthread m_pollingThread;
-	std::jthread m_serverThread;
+
 	STATE m_state = STATE::STOPPED;
 	ROTATIONSTRUCT m_rotationData{};
 	//std::atomic<double> m_cachedAngle{ 0.0 }; // Used for instantaneous reading from grpc

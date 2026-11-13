@@ -64,6 +64,7 @@ void MainWindow::lock_controls(bool lock)
         ui->TargetAngleEdit->setEnabled(false);
         ui->CalBtn->setEnabled(false);
         ui->homeBtn->setEnabled(false);
+        ui->comboMode->setEnabled(true);
     }
     else
     {
@@ -73,6 +74,7 @@ void MainWindow::lock_controls(bool lock)
         ui->TargetAngleEdit->setEnabled(true);
         ui->CalBtn->setEnabled(true);
         ui->homeBtn->setEnabled(true);
+        ui->comboMode->setEnabled(false);
     }
 }
 
@@ -102,6 +104,12 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    ui->comboMode->addItem("TIME_BASED");
+    ui->comboMode->addItem("CLOCK_BASED");
+
+    // Sélectionner le premier élément
+    ui->comboMode->setCurrentIndex(0);
+
     lock_controls(true);
     status("Controls locked.");
 
@@ -154,7 +162,7 @@ void checkConnectionThread(MainWindow* obj)
                         // Exécuté dans le thread principal
                         obj->lock_controls(true);
                         obj->status("Measurement stopped.");
-                        obj->ui->TurnBtn->setText("Run");
+                        obj->ui->TurnBtn->setText("Run");  
                     },
                     Qt::QueuedConnection
                 );
@@ -202,7 +210,9 @@ void MainWindow::onRunButtonClicked()
         }
 
 		double value = ui->FreqEdit->text().toDouble(); // TODO: use frequency value
-		std::string command = std::format("RUN={}", value);
+		std::string mode = ui->comboMode->currentText().toStdString();
+
+		std::string command = std::format("RUN={}&MODE={}", value, mode);
         if (frontend_rpc_send_command(command, reply) != 0x0)
         {
             std::print("[Frontend] Error reading angle\n");
@@ -224,7 +234,7 @@ void MainWindow::onRunButtonClicked()
         g_readingThread = std::jthread(checkConnectionThread, this);
 
         // Update every delay
-        timer->start(5000); 
+        timer->start(200); 
 
         ui->TurnBtn->setText("Stop");
 

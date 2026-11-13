@@ -22,7 +22,6 @@ static std::string calFilename = "cal.txt"; // Calibration file name
 //
 
 #include "colors.h"
-#include "backend_rpc.h"
 #include "hardwareControl.h"
 #include "timerControl.h"
 #include "fileControl.h"
@@ -56,17 +55,11 @@ public:
 			stop();
 		}
 
-		//std::print("[*] Stopping lua automation\n");
-
 		std::print("[*] Stopping backend polling thread\n");
 		if (m_pollingThread.joinable()) {
 			m_pollingThread.request_stop();
 		}
 
-		std::print("[*] Stopping backend RPC server\n");
-		if (m_serverThread.joinable()) {
-			m_serverThread.request_stop();
-		}
 		std::print("[*] Delete done\n");
 	};
 
@@ -163,11 +156,6 @@ private:
 
 		resetData();
 
-		std::print("[*] Starting server thread\n");
-		m_serverThread = std::jthread([this](std::stop_token st) {
-			backend_rpc_init(m_parent, st);
-			});
-		assert(m_serverThread.joinable());// Ensure the server thread is running correctly
 
 		std::print("[*] Start the polling thread\n");
 		m_pollingThread = std::jthread([this](std::stop_token st) {

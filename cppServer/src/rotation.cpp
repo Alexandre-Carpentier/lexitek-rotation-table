@@ -16,7 +16,6 @@
 //
 
 #include "colors.h"
-#include "backend_rpc.h"
 #include "hardwareControl.h"
 #include "timerControl.h"
 #include "fileControl.h"
