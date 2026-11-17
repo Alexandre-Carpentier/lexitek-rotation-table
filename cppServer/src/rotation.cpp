@@ -113,12 +113,12 @@ struct ROTATIONSTRUCT {
 #include "rotationTimeBased.h"
 #include "rotationClockBased.h"
 
-///////////////////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////
+// 
+// Strategy: switch between time or clock based at runtime
 //
-// This class is only to provide a clean header (opaque proxy).
-// refer to pimpl idiom
 
-lexitek::lexitek(positionnning_mode mode)
+bool lexitek::setStrategy(positionnning_mode mode)
 {
 	// Factory for dependencies
 	// Configure the production code here
@@ -127,83 +127,73 @@ lexitek::lexitek(positionnning_mode mode)
 
 	case positionnning_mode::TIME_BASED:
 	{
-		static timeBased_hardware hw;
-		static timeCounter t1, t2;
-		static production_file f;
-		static production_automation script;
+		m_deps.hardware = std::make_unique<timeBased_hardware>();
+		m_deps.counter1 = std::make_unique<timeCounter>();
+		m_deps.counter2 = std::make_unique<timeCounter>();
+		m_deps.file = std::make_unique<production_file>();
+		m_deps.script = std::make_unique<production_automation>();
 
-		impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
-			hw, t1, t2, f, script);
+		m_impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
+			*m_deps.hardware, *m_deps.counter1, *m_deps.counter2, *m_deps.file, *m_deps.script);
 		break;
 	}
 	case positionnning_mode::CLOCK_BASED:
 	{
-		static clockBased_hardware hw;
-		static clockCounter t1, t2;
-		static production_file f;
-		static production_automation script;
+		m_deps.hardware = std::make_unique<clockBased_hardware>();
+		m_deps.counter1 = std::make_unique<clockCounter>();
+		m_deps.counter2 = std::make_unique<clockCounter>();
+		m_deps.file = std::make_unique<production_file>();
+		m_deps.script = std::make_unique<production_automation>();
 
-		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
-			hw, t1, t2, f, script
+		m_impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
+			*m_deps.hardware, *m_deps.counter1, *m_deps.counter2, *m_deps.file, *m_deps.script
 		);
 
 		break;
 	}
 	}
 
-	std::print("[*] driver_r208 loading (production)\n");
+	std::print("[*] setStrategy {} done\n", static_cast<int>(mode));
+	return true;
 }
+///////////////////////////////////////////////////////////////////////////////////////
+//
+// This class is only to provide a clean header (opaque proxy).
+// refer to pimpl idiom
 
-lexitek::lexitek(positionnning_mode mode, dependencies deps)
+lexitek::lexitek(positionnning_mode mode): m_mode(mode)
 {
-	// Factory
-	switch (mode)
-	{
-
-	case positionnning_mode::TIME_BASED:
-	{
-		impl = std::make_unique<rotationImpl::rotationTimeBasedImpl>(*this,
-			deps.hardware, deps.counter1, deps.counter2, deps.file, deps.script);
-		break;
-	}
-	case positionnning_mode::CLOCK_BASED:
-	{
-		impl = std::make_unique<rotationImpl::rotationClockBasedImpl>(*this,
-			deps.hardware, deps.counter1, deps.counter2, deps.file, deps.script);
-		break;
-	}
-
-	}
-	std::print("[*] lexitek loading (injected)\n");
+	setStrategy(mode);
+	std::print("[*] lexitek constructor\n");
 }
 
 bool lexitek::start(frequency_t freqHz)
 {
 	assert(freqHz.get() > 0.0);
 	assert(freqHz.get() <= 2000.0);
-	return impl->start(freqHz);
+	return m_impl->start(freqHz);
 }
 
 bool lexitek::stop()
 {
 	std::print("[*] driver_r208 stopping\n");
-	return impl->stop();
+	return m_impl->stop();
 }
 
 bool lexitek::doCalibrating()
 {
-	return impl->doCalibrating();
+	return m_impl->doCalibrating();
 }
 
 bool lexitek::doHoming()
 {
-	return impl->doHoming();
+	return m_impl->doHoming();
 }
 
 bool lexitek::readAngle(angle_t& angle)
 {
 	angle_t val{};
-	if(!impl->readAngle(val))
+	if(!m_impl->readAngle(val))
 	{
 		std::print("[*] Error reading angle\n");
 		return false;
@@ -214,7 +204,7 @@ bool lexitek::readAngle(angle_t& angle)
 
 bool lexitek::setAngle(angle_t angle)
 {
-	if(!impl->setAngle(angle.get()))
+	if(!m_impl->setAngle(angle.get()))
 	{
 		std::print("[*] Error setting angle\n");
 		return false;
@@ -225,4 +215,36 @@ bool lexitek::setAngle(angle_t angle)
 lexitek::~lexitek()
 {
 	std::print("[*] lexitek finnish\n");
+}
+
+bool lexitek::setPositioningMode(positionnning_mode mode)
+{
+	if (mode != m_mode)
+	{
+		std::print(CBLUE);
+		std::print("[*] Changing positioning mode from {} to {}\n", static_cast<int>(m_mode), static_cast<int>(mode));
+		std::print(CRESET);
+
+		// Stop the device
+
+		m_impl->stop();
+
+		// Destroy the current implementation
+		m_impl.reset();
+		m_deps.reset();
+		 
+
+		// set the new implementation
+
+		setStrategy(mode); 
+
+		m_mode = mode;
+
+		return true;
+	}
+
+	std::print(CRED);
+	std::print("[*] Positioning mode is already {}\n", static_cast<int>(m_mode));
+	std::print(CRESET);
+	return false;
 }

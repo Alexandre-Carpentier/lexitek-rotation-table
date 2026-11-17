@@ -106,7 +106,9 @@ add_library(cppServer-static
 	src/rotation.cpp
 	src/rotationTimeBased.h
 	src/rotationClockBased.h
-	src/backend_rpc.h
+	#src/backend_rpc.h
+	src/gRpc.h
+	src/gRpc.cpp
 
 	src/hardwareControl.h
 	src/timerControl.h
@@ -136,7 +138,9 @@ add_executable(cppServer
 	src/rotation.cpp
 	src/rotationTimeBased.h
 	src/rotationClockBased.h
-	src/backend_rpc.h
+	#src/backend_rpc.h
+	src/gRpc.h
+	src/gRpc.cpp
 
 	src/hardwareControl.h
 	src/timerControl.h

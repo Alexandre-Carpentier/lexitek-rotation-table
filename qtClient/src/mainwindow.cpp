@@ -58,7 +58,7 @@ void MainWindow::lock_controls(bool lock)
 {
     if(lock)
     {
-        ui->TurnBtn->setStyleSheet("background-color: #1B4332; color: white;");
+        ui->TurnBtn->setStyleSheet("background-color: #1B4332; color: white; border-radius: 6px; padding: 6px");
         ui->FreqEdit->setEnabled(true);
 
         ui->TargetAngleEdit->setEnabled(false);
@@ -68,7 +68,21 @@ void MainWindow::lock_controls(bool lock)
     }
     else
     {
-        ui->TurnBtn->setStyleSheet("background-color: #FFCC99;");
+        ui->TurnBtn->setStyleSheet(
+            "QPushButton {"
+            "  background-color: #CC6600;"
+            "  color: white;"
+            "  border-radius: 6px;"
+            "  padding: 6px;"
+            "  font-weight: bold;"
+            "}"
+            "QPushButton:hover {"
+            "  background-color: #E67300;"
+            "}"
+            "QPushButton:pressed {"
+            "  background-color: #994C00;"
+            "}"
+        );
         ui->FreqEdit->setEnabled(false);
 
         ui->TargetAngleEdit->setEnabled(true);

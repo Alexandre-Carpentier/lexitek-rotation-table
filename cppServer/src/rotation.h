@@ -164,16 +164,26 @@ public:
 	// This struct is used to inject dependencies in the constructor.
 	// Caller can choose to pass production or mock dependencies for testing if needed.
 	struct dependencies {
-		hardware_interface& hardware;
-		counter_interface& counter1;
-		counter_interface& counter2;
-		file_interface& file;
-		automation_interface& script;
+		std::unique_ptr<hardware_interface> hardware;
+		std::unique_ptr<counter_interface> counter1;
+		std::unique_ptr<counter_interface> counter2;
+		std::unique_ptr<file_interface> file;
+		std::unique_ptr<automation_interface> script;
+
+		void reset()
+		{
+			hardware.reset();
+			counter1.reset();
+			counter2.reset();
+			file.reset();
+			script.reset();
+		}
 	};
 
-	explicit lexitek(positionnning_mode mode);// (1) Default constructor for prod
-	[[deprecated]] explicit lexitek(positionnning_mode mode, dependencies deps); // Inject for tests only. This is why it is marked as deprecated to avoid misuse in production code.
+	explicit lexitek(positionnning_mode mode);
 	~lexitek();
+
+	bool setPositioningMode(positionnning_mode mode);// Change the positioning mode at runtime
 
 	bool start(frequency_t frequency); // (2) table.start(frequency{100.0});
 	bool stop(); // (6) Stop the table
@@ -183,8 +193,12 @@ public:
 	bool setAngle(angle_t angle); // (4) Go to a position
 
 private:
+	bool setStrategy(positionnning_mode mode);
+
 	// Opaque ptr logic 
 	class rotationImpl;
-	std::unique_ptr<rotationImpl> impl;
+	std::unique_ptr<rotationImpl> m_impl;
+	dependencies m_deps;
+	positionnning_mode m_mode;
 };
 

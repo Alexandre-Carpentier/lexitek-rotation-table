@@ -34,7 +34,7 @@ int main()
     timeCounter t1, t2;
     production_file f;
     production_automation script;
-    lexitek rotation{ positionnning_mode::TIME_BASED,lexitek::dependencies{ hw, t1, t2, f, script } };
+    lexitek rotation{ positionnning_mode::TIME_BASED };
 
     while (getchar() != EOF)
     {

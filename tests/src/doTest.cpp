@@ -170,7 +170,7 @@ TEST(test_system, rotation_test) {
 	timeCounter t1, t2;
 	production_file f;
 	production_automation script;
-	lexitek rotation{ positionnning_mode::TIME_BASED, lexitek::dependencies{ hw, t1, t2, f, script } };
+	lexitek rotation{ positionnning_mode::TIME_BASED };
 
 	std::print("[*] Test the rotation class\n");
 	std::print("[*] Injecting dependencies in constructor\n");
