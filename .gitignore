@@ -2,3 +2,4 @@
 /build
 .vs
 /apple-build/
+CMakePresets.json
