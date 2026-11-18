@@ -47,7 +47,6 @@ void setDarkTheme(QApplication& app)
 
 int main(int argc, char *argv[])
 {
-
     ///////////////////////////////////////////////////////////////////////////////////////
     //
 	// First start the remote backend process (server)
